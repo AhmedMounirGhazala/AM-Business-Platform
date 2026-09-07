@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --brand-navy: #0B1F3A;
+    --brand-navy-light: #153258;
+    --brand-navy-dark: #061121;
+    --brand-orange: #F28C28;
+    --brand-orange-hover: #D9771A;
+    --bg-light: #F8FAFC;
+    --bg-surface: #FFFFFF;
+    --border-light: #E2E8F0;
+  }
+
+  .dark {
+    --bg-light: #070E1A;
+    --bg-surface: #0B1628;
+    --border-light: #1E293B;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: var(--bg-light);
+    color: #0F172A;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  [dir="rtl"] body, [dir="rtl"] {
+    font-family: 'Cairo', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  .dark body {
+    color: #F8FAFC;
+  }
+}
+
+/* Custom Enterprise Brand Utility Classes */
+.bg-brand-navy {
+  background-color: #0B1F3A;
+}
+
+.bg-brand-navy-light {
+  background-color: #153258;
+}
+
+.bg-brand-navy-dark {
+  background-color: #061121;
+}
+
+.text-brand-navy {
+  color: #0B1F3A;
+}
+
+.border-brand-navy {
+  border-color: #0B1F3A;
+}
+
+.bg-brand-orange {
+  background-color: #F28C28;
+}
+
+.hover\:bg-brand-orange-hover:hover {
+  background-color: #D9771A;
+}
+
+.text-brand-orange {
+  color: #F28C28;
+}
+
+.border-brand-orange {
+  border-color: #F28C28;
+}
+
+/* Enterprise AM Systemic Buttons & Tags */
+.btn-am-primary {
+  background-color: #0B1F3A;
+  color: #FFFFFF;
+  border: 1px solid #0B1F3A;
+  font-weight: 600;
+  transition: all 150ms ease;
+}
+.btn-am-primary:hover {
+  background-color: #153258;
+  border-color: #153258;
+}
+
+.btn-am-accent {
+  background-color: #F28C28;
+  color: #FFFFFF;
+  border: 1px solid #F28C28;
+  font-weight: 600;
+  transition: all 150ms ease;
+}
+.btn-am-accent:hover {
+  background-color: #D9771A;
+  border-color: #D9771A;
+}
+
+.badge-am-accent {
+  background-color: rgba(242, 140, 40, 0.12);
+  color: #D9771A;
+  border: 1px solid rgba(242, 140, 40, 0.3);
+}
+
+.dark .badge-am-accent {
+  background-color: rgba(242, 140, 40, 0.2);
+  color: #F28C28;
+  border: 1px solid rgba(242, 140, 40, 0.4);
+}
+
+.card-am-surface {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.75rem;
+}
+
+.dark .card-am-surface {
+  background-color: #0B1628;
+  border-color: #1E293B;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Print Styles */
+@media print {
+  aside, navbar, button {
+    display: none !important;
+  }
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "AM Business Platform",
+  "description": "Enterprise SaaS Operating & ERP Platform with Multi-Tenant Architecture, Durable SQLite Persistence, Retail Pilot Deployment Hardening, Cryptographic Backups, Master Data CSV Onboarding, and Event-Driven General Ledger.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
