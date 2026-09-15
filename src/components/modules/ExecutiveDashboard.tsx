@@ -92,16 +92,23 @@ export const ExecutiveDashboard: React.FC = () => {
     <div className="p-6 space-y-6">
       
       {/* Top Banner & Quick Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0B1F3A] text-white p-6 rounded-2xl border border-[#153258] shadow-sm">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-5 h-5 text-[#F28C28]" />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0B1F3A] text-white p-6 rounded-2xl border border-[#153258] shadow-md">
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <div className="w-7 h-7 rounded-lg bg-[#0B1F3A] border border-[#F28C28] text-[#F28C28] flex items-center justify-center font-black text-xs shadow-xs">
+              AM
+            </div>
             <h1 className="text-xl font-bold tracking-tight">
               {isAr ? 'لوحة القيادة التنفيذية والذكاء المالي' : 'Executive ERP Overview & Business Intelligence'}
             </h1>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#F28C28]/20 text-[#F28C28] border border-[#F28C28]/30">
+              {isAr ? '«كل قرار ناجح يبدأ برقم صحيح»' : '"Accurate Numbers First"'}
+            </span>
           </div>
           <p className="text-xs text-slate-300">
-            {isAr ? 'مراقبة فورية للقوائم المالية، مخزون المستودعات، والتدفقات النقدية المعتمدة' : 'Real-time General Ledger, Multi-Warehouse Inventory, & Cash Flow Metrics'}
+            {isAr 
+              ? 'مراقبة فورية للقوائم المالية، مخزون المستودعات، والتدفقات النقدية — إيه إم لتخطيط موارد المؤسسات' 
+              : 'Real-time General Ledger, Multi-Warehouse Inventory, & Cash Flow — AM ERP Engine'}
           </p>
         </div>
 

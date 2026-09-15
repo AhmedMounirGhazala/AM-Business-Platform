@@ -20,6 +20,12 @@ import { WorkflowEngine } from './workflowEngine';
 import { RFQUserContext } from './rfqEngine';
 
 export class SupplierQuotationEngine {
+  private static liveVendorProvider?: () => VendorMaster[];
+
+  public static setLiveVendorProvider(provider: () => VendorMaster[]): void {
+    this.liveVendorProvider = provider;
+  }
+
   /**
    * Validate and compute line totals, tax amounts, and currency-normalized unit price
    */
@@ -189,7 +195,7 @@ export class SupplierQuotationEngine {
     }
 
     // Lookup Supplier Master
-    const vendorsList = customVendors || (INITIAL_VENDORS as any[]);
+    const vendorsList = customVendors || (this.liveVendorProvider ? this.liveVendorProvider() : (INITIAL_VENDORS as any[]));
     let matchedSupplier = vendorsList.find((s: any) => (s.id === supplierId || s.code === supplierId) && s.tenantId === context.tenantId);
     if (!matchedSupplier) {
       return { success: false, error: `Supplier '${supplierId}' not found in master data.` };

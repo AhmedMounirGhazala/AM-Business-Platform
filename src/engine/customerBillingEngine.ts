@@ -22,6 +22,7 @@ import {
   TaxCategory
 } from '../types/customerBilling';
 import { OutboundLogisticsEngine } from './outboundLogisticsEngine';
+import { TaxEngine } from './taxEngine';
 
 export interface CreateBillingDocumentDTO {
   tenantId: string;
@@ -169,10 +170,21 @@ export class CustomerBillingEngine {
       const netAmount = Number((grossBeforeDiscount - discountAmount).toFixed(2));
 
       const taxCategory = l.taxCategory || 'STANDARD_VAT_15';
-      let taxRate = 0.15;
-      if (taxCategory === 'ZERO_RATED' || taxCategory === 'EXEMPT') taxRate = 0.0;
-      if (taxCategory === 'REVERSE_CHARGE') taxRate = 0.0;
-      if (l.taxRate !== undefined) taxRate = l.taxRate;
+      let taxRate = l.taxRate;
+      if (taxRate === undefined) {
+        if (taxCategory === 'ZERO_RATED' || taxCategory === 'EXEMPT' || taxCategory === 'REVERSE_CHARGE') {
+          taxRate = 0.0;
+        } else {
+          const resolved = TaxEngine.resolveTaxRate({
+            tenantId: dto.tenantId,
+            companyId: dto.companyId,
+            countryOrJurisdiction: dto.currency === 'EGP' ? 'EG' : 'SA',
+            taxCategory: l.taxCategory,
+            transactionDate: dto.billingDate
+          });
+          taxRate = resolved.taxRate;
+        }
+      }
 
       const taxAmount = Number((netAmount * taxRate).toFixed(2));
       const lineGross = Number((netAmount + taxAmount).toFixed(2));

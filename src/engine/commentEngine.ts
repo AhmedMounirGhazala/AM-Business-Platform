@@ -6,6 +6,9 @@
 import { ActivityLog, DocumentComment } from '../types';
 
 export class CommentEngine {
+  private static commentMutationListener: ((comment: DocumentComment) => void) | null = null;
+  private static activityMutationListener: ((activity: ActivityLog) => void) | null = null;
+
   private static commentsStore: DocumentComment[] = [
     {
       id: 'cmt-101',
@@ -35,6 +38,30 @@ export class CommentEngine {
     }
   ];
 
+  static setCommentMutationListener(listener: (comment: DocumentComment) => void): void {
+    this.commentMutationListener = listener;
+  }
+
+  static setActivityMutationListener(listener: (activity: ActivityLog) => void): void {
+    this.activityMutationListener = listener;
+  }
+
+  static hydrate(comments?: DocumentComment[], activities?: ActivityLog[]): void {
+    if (comments && comments.length > 0) {
+      this.commentsStore = [...comments];
+    }
+    if (activities && activities.length > 0) {
+      this.activityLogsStore = [...activities];
+    }
+  }
+
+  static exportState(): { comments: DocumentComment[]; activities: ActivityLog[] } {
+    return {
+      comments: [...this.commentsStore],
+      activities: [...this.activityLogsStore]
+    };
+  }
+
   static getEntityComments(tenantId: string, entityType: string, entityId: string): DocumentComment[] {
     return this.commentsStore.filter(c => c.tenantId === tenantId && c.entityType === entityType && c.entityId === entityId);
   }
@@ -63,6 +90,7 @@ export class CommentEngine {
     };
 
     this.commentsStore.unshift(cmt);
+    this.commentMutationListener?.(cmt);
     return cmt;
   }
 
@@ -94,6 +122,7 @@ export class CommentEngine {
     };
 
     this.activityLogsStore.unshift(act);
+    this.activityMutationListener?.(act);
     return act;
   }
 }

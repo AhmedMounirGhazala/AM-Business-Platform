@@ -405,6 +405,50 @@ export class MasterDataService {
   private static barcodes: ProductBarcode[] = [...INITIAL_BARCODES];
   private static taxCategories: TaxCategory[] = [...INITIAL_TAX_CATEGORIES];
   private static auditLogs: MasterDataAuditLog[] = [...INITIAL_AUDIT_LOGS];
+  private static mutationListener?: (entityType: string, entity: any) => void;
+
+  public static setMutationListener(listener: (entityType: string, entity: any) => void): void {
+    this.mutationListener = listener;
+  }
+
+  public static hydrate(state: {
+    products?: ProductTemplate[];
+    variants?: ProductVariant[];
+    attributes?: AttributeDefinition[];
+    attributeSets?: AttributeSet[];
+    uomCategories?: UOMCategory[];
+    uoms?: UnitOfMeasure[];
+    conversions?: UOMConversionRule[];
+    barcodes?: ProductBarcode[];
+    taxCategories?: TaxCategory[];
+    auditLogs?: MasterDataAuditLog[];
+  }): void {
+    if (state.products && state.products.length > 0) this.products = [...state.products];
+    if (state.variants && state.variants.length > 0) this.variants = [...state.variants];
+    if (state.attributes && state.attributes.length > 0) this.attributes = [...state.attributes];
+    if (state.attributeSets && state.attributeSets.length > 0) this.attributeSets = [...state.attributeSets];
+    if (state.uomCategories && state.uomCategories.length > 0) this.uomCategories = [...state.uomCategories];
+    if (state.uoms && state.uoms.length > 0) this.uoms = [...state.uoms];
+    if (state.conversions && state.conversions.length > 0) this.conversions = [...state.conversions];
+    if (state.barcodes && state.barcodes.length > 0) this.barcodes = [...state.barcodes];
+    if (state.taxCategories && state.taxCategories.length > 0) this.taxCategories = [...state.taxCategories];
+    if (state.auditLogs && state.auditLogs.length > 0) this.auditLogs = [...state.auditLogs];
+  }
+
+  public static exportState() {
+    return {
+      products: this.products,
+      variants: this.variants,
+      attributes: this.attributes,
+      attributeSets: this.attributeSets,
+      uomCategories: this.uomCategories,
+      uoms: this.uoms,
+      conversions: this.conversions,
+      barcodes: this.barcodes,
+      taxCategories: this.taxCategories,
+      auditLogs: this.auditLogs
+    };
+  }
 
   // ---------- AUDIT LOGGING ----------
   public static logAudit(
@@ -439,6 +483,11 @@ export class MasterDataService {
       correlationId: `CORR-MD-${Date.now()}`
     };
     this.auditLogs.unshift(log);
+    if (this.mutationListener) {
+      try {
+        this.mutationListener(entityType, newState || { id: entityId, code: entityCode });
+      } catch {}
+    }
     return log;
   }
 

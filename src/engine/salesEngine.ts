@@ -29,6 +29,7 @@ import {
   SalesReturnLine,
   SalesDocumentSequenceConfig
 } from '../types/sales';
+import { TaxEngine } from './taxEngine';
 
 export class SalesEngine {
 
@@ -451,7 +452,9 @@ export class SalesEngine {
     let taxTotal = 0;
     let withholdingTaxTotal = 0;
 
-    const defaultRate = jurisdiction.defaultTaxRate || 0.15;
+    const defaultRate = jurisdiction.defaultTaxRate !== undefined
+      ? jurisdiction.defaultTaxRate
+      : TaxEngine.resolveTaxRate({ countryOrJurisdiction: 'SA' }).taxRate;
     const whtRate = jurisdiction.withholdingTaxRate || 0;
     const isInclusive = jurisdiction.isTaxInclusiveDefault;
 
@@ -767,10 +770,43 @@ export class SalesEngine {
     updatedShift: POSShift;
     error?: string;
   } {
-    const subtotal = cartLines.reduce((sum, line) => sum + (line.quantity * line.originalUnitPrice), 0);
-    const discountTotal = cartLines.reduce((sum, line) => sum + line.discountAmount, 0);
-    const taxTotal = cartLines.reduce((sum, line) => sum + line.taxAmount, 0);
-    const grandTotal = Math.round((subtotal - discountTotal + taxTotal) * 100) / 100;
+    const taxCalcResult = TaxEngine.calculateDocumentTaxes(
+      cartLines.map(l => ({
+        id: l.id,
+        sku: l.itemSku,
+        quantity: l.quantity,
+        unitPrice: l.originalUnitPrice || l.unitPrice,
+        discountPercent: l.discountPercentage || 0,
+        taxCode: l.taxCode,
+        taxCategory: l.taxCategory,
+        taxRate: l.taxRate,
+        isTaxInclusive: l.isTaxInclusive
+      })),
+      undefined,
+      undefined,
+      0,
+      {
+        tenantId: register.tenantId,
+        companyId: register.companyId,
+        branchId: register.branchId
+      }
+    );
+
+    const subtotal = taxCalcResult.subtotal;
+    const discountTotal = taxCalcResult.discountTotal;
+    const taxTotal = taxCalcResult.taxTotal;
+    const grandTotal = taxCalcResult.grandTotal;
+
+    const authoritativeLines = cartLines.map((line, idx) => {
+      const breakdown = taxCalcResult.lineBreakdowns[idx];
+      if (!breakdown) return line;
+      return {
+        ...line,
+        taxRate: breakdown.taxRate,
+        taxAmount: breakdown.taxAmount,
+        lineTotal: breakdown.total
+      };
+    });
 
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
 
@@ -803,7 +839,7 @@ export class SalesEngine {
       isWalkInCustomer: customer.isWalkIn,
       cashierId: cashier.id,
       cashierName: cashier.name,
-      lines: cartLines,
+      lines: authoritativeLines,
       subtotal,
       discountTotal,
       taxTotal,
@@ -876,7 +912,13 @@ export class SalesEngine {
   ): SalesReturn {
     const now = new Date().toISOString();
     const refundSubtotal = lines.reduce((sum, l) => sum + (l.quantityReturned * l.unitPrice), 0);
-    const refundTaxTotal = Math.round(refundSubtotal * 0.15 * 100) / 100;
+    const refundTaxTotal = Math.round(lines.reduce((sum, l) => {
+      if (l.taxAmount !== undefined) return sum + l.taxAmount;
+      const lineTaxRate = l.taxRate !== undefined
+        ? l.taxRate
+        : TaxEngine.resolveTaxRate({ countryOrJurisdiction: 'SA', companyId: 'comp-001' }).taxRate;
+      return sum + (l.quantityReturned * l.unitPrice * lineTaxRate);
+    }, 0) * 100) / 100;
     const refundGrandTotal = Math.round((refundSubtotal + refundTaxTotal) * 100) / 100;
 
     let storeCreditCode: string | undefined;

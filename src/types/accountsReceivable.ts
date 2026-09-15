@@ -106,7 +106,9 @@ export interface CustomerCreditNote {
   lines: SalesInvoiceLineItem[];
   subtotal: number;
   taxTotal: number;
+  taxAmount?: number;
   grandTotal: number;
+  totalAmount?: number;
   status: 'DRAFT' | 'POSTED' | 'CANCELLED';
   hash: string;
   createdBy: string;

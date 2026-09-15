@@ -32,6 +32,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { usePlatform, ModuleView } from '../../context/PlatformContext';
+import { LoginModal } from '../common/LoginModal';
 
 export const Navbar: React.FC = () => {
   const { 
@@ -56,11 +57,13 @@ export const Navbar: React.FC = () => {
     clearAllNotifications,
     activeRole,
     setActiveRole,
-    favorites
+    favorites,
+    branding
   } = usePlatform();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const isAr = lang === 'ar';
 
   const roleLabels: Record<string, { en: string; ar: string }> = {
@@ -102,20 +105,43 @@ export const Navbar: React.FC = () => {
           </button>
 
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveModule('dashboard')}>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B1F3A] text-white font-black shadow-md border border-[#F28C28]/40">
-              <span className="text-lg tracking-wider text-[#F28C28]">AM</span>
+            <div 
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-white font-black shadow-md border overflow-hidden shrink-0"
+              style={{ 
+                backgroundColor: branding?.primaryColor || '#0B1F3A',
+                borderColor: `${branding?.accentColor || '#F28C28'}66` 
+              }}
+            >
+              {(theme === 'dark' && branding?.darkLogoUrl) ? (
+                <img src={branding.darkLogoUrl} alt="Logo" className="max-h-8 max-w-8 object-contain" onError={(e) => { (e.target as any).style.display = 'none'; }} />
+              ) : branding?.logoUrl ? (
+                <img src={branding.logoUrl} alt="Logo" className="max-h-8 max-w-8 object-contain" onError={(e) => { (e.target as any).style.display = 'none'; }} />
+              ) : (
+                <span className="text-lg tracking-wider" style={{ color: branding?.accentColor || '#F28C28' }}>
+                  {branding?.shortName || 'AM'}
+                </span>
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-[#0B1F3A] dark:text-white text-base tracking-tight">
-                  {isAr ? 'منصة إيه إم للأعمال' : 'AM Business Platform'}
+                <span className="font-bold text-slate-900 dark:text-white text-base tracking-tight">
+                  {isAr 
+                    ? (branding?.appNameAr || branding?.appName || 'منصة إيه إم للأعمال')
+                    : (branding?.appName || 'AM Business Platform')}
                 </span>
-                <span className="inline-flex items-center rounded-md bg-[#F28C28]/10 text-[#F28C28] dark:bg-[#F28C28]/20 px-2 py-0.5 text-xs font-bold border border-[#F28C28]/30">
+                <span 
+                  className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold border"
+                  style={{ 
+                    backgroundColor: `${branding?.accentColor || '#F28C28'}1A`,
+                    color: branding?.accentColor || '#F28C28',
+                    borderColor: `${branding?.accentColor || '#F28C28'}4D`
+                  }}
+                >
                   {activeTenant?.edition || 'Enterprise'}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {isAr ? 'نظام تشغيل وإدارة الموارد السحابي' : 'Cloud Enterprise SaaS & ERP Engine'}
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[280px]">
+                {branding?.tradingName || (isAr ? 'نظام تشغيل وإدارة الموارد السحابي' : 'Cloud Enterprise SaaS & ERP Engine')}
               </p>
             </div>
           </div>
@@ -298,8 +324,13 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* Current User Badge */}
-          <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
+          {/* Current User Badge & Auth Switcher */}
+          <button
+            onClick={() => setIsLoginModalOpen(true)}
+            className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 p-1.5 rounded-xl transition cursor-pointer text-left rtl:text-right"
+            title={isAr ? 'تبديل المستخدم أو تسجيل الدخول المؤسسي' : 'Switch Account / Enterprise Login'}
+            id="nav-user-profile-btn"
+          >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B1F3A] text-[#F28C28] font-bold text-xs border border-[#F28C28]/40">
               AM
             </div>
@@ -312,7 +343,7 @@ export const Navbar: React.FC = () => {
                 {roleLabels[activeRole]?.en || 'Super Admin'}
               </p>
             </div>
-          </div>
+          </button>
 
         </div>
 
@@ -391,6 +422,12 @@ export const Navbar: React.FC = () => {
 
         </div>
       )}
+
+      {/* Canonical AM ERP Login & Multi-Tenant Authentication Modal */}
+      <LoginModal 
+        isOpen={isLoginModalOpen} 
+        onClose={() => setIsLoginModalOpen(false)} 
+      />
     </header>
   );
 };

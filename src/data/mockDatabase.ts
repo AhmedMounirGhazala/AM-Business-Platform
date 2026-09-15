@@ -243,8 +243,12 @@ export const INITIAL_FISCAL_PERIODS: FiscalPeriod[] = Array.from({ length: 12 },
 });
 
 export const INITIAL_TAX_RULES: TaxRule[] = [
-  { id: 'tax-ksa-15', tenantId: 'ten-001', companyId: 'comp-001', code: 'VAT15', name: 'KSA Standard VAT 15%', nameAr: 'ضريبة القيمة المضافة 15%', rate: 0.15, taxAccountCode: '2020', isActive: true },
-  { id: 'tax-zero', tenantId: 'ten-001', companyId: 'comp-001', code: 'VAT0', name: 'Zero Rated / Export', nameAr: 'معفى / صادر معفى', rate: 0, taxAccountCode: '2020', isActive: true }
+  { id: 'tax-ksa-15', tenantId: 'ten-001', companyId: 'comp-001', code: 'VAT15', name: 'KSA Standard VAT 15%', nameAr: 'ضريبة القيمة المضافة 15%', rate: 0.15, taxAccountCode: '2020', isActive: true, countryCode: 'SA', taxSystemId: 'tax-sys-sa-vat', taxCategory: 'STANDARD', effectiveFrom: '2020-07-01' },
+  { id: 'tax-ksa-05-hist', tenantId: 'ten-001', companyId: 'comp-001', code: 'VAT5_HIST', name: 'KSA Historical VAT 5%', nameAr: 'ضريبة القيمة المضافة السابقة 5%', rate: 0.05, taxAccountCode: '2020', isActive: true, countryCode: 'SA', taxSystemId: 'tax-sys-sa-vat', taxCategory: 'STANDARD', effectiveFrom: '2018-01-01', effectiveTo: '2020-06-30' },
+  { id: 'tax-egy-14', tenantId: 'ten-001', companyId: 'comp-001', code: 'VAT14', name: 'Egypt Standard VAT 14%', nameAr: 'ضريبة القيمة المضافة مصر 14%', rate: 0.14, taxAccountCode: '2020', isActive: true, countryCode: 'EG', taxSystemId: 'tax-sys-eg-vat', taxCategory: 'STANDARD', effectiveFrom: '2016-09-08' },
+  { id: 'tax-zero', tenantId: 'ten-001', companyId: 'comp-001', code: 'VAT0', name: 'Zero Rated / Export', nameAr: 'معفى / صادر معفى', rate: 0, taxAccountCode: '2020', isActive: true, taxCategory: 'ZERO_RATED', effectiveFrom: '2018-01-01' },
+  { id: 'tax-exempt', tenantId: 'ten-001', companyId: 'comp-001', code: 'VAT_EXEMPT', name: 'Tax Exempt', nameAr: 'معفى ضريبياً', rate: 0, taxAccountCode: '2020', isActive: true, taxCategory: 'EXEMPT', effectiveFrom: '2018-01-01' },
+  { id: 'tax-wht-1', tenantId: 'ten-001', companyId: 'comp-001', code: 'WHT1', name: 'Withholding Tax 1%', nameAr: 'ضريبة الاستقطاع 1%', rate: 0.01, taxAccountCode: '2020', isActive: true, effectiveFrom: '2018-01-01' }
 ];
 
 export const INITIAL_UNITS_OF_MEASURE: UnitOfMeasure[] = [
@@ -315,6 +319,17 @@ export const INITIAL_POSTING_RULES: PostingRule[] = [
     name: 'Supplier Disbursement Payment Rule',
     debitAccountCode: '2010',  // Accounts Payable
     creditAccountCode: '1010', // Cash / Bank
+    isActive: true
+  },
+  {
+    id: 'pr-006',
+    tenantId: 'ten-001',
+    companyId: 'comp-001',
+    documentType: 'PurchaseInvoice',
+    name: 'Standard Purchase Invoice Posting Rule',
+    debitAccountCode: '1030',  // Inventory / Expense
+    creditAccountCode: '2010', // Accounts Payable
+    taxAccountCode: '1040',    // Input VAT Recoverable (Debit)
     isActive: true
   }
 ];
@@ -393,6 +408,7 @@ export const INITIAL_ACCOUNTS: Account[] = [
   { id: 'acc-1010', tenantId: 'ten-001', companyId: 'comp-001', code: '1010', name: 'Cash on Hand & Bank', nameAr: 'النقد في الخزينة والبنوك', category: 'Asset', accountType: 'Cash', balance: 1450000, currency: 'SAR', isActive: true, level: 1 },
   { id: 'acc-1020', tenantId: 'ten-001', companyId: 'comp-001', code: '1020', name: 'Accounts Receivable (AR)', nameAr: 'العملاء وحسابات القبض', category: 'Asset', accountType: 'Receivable', balance: 680000, currency: 'SAR', isActive: true, level: 1 },
   { id: 'acc-1030', tenantId: 'ten-001', companyId: 'comp-001', code: '1030', name: 'Merchandise Inventory', nameAr: 'مخزون البضائع للبيع', category: 'Asset', accountType: 'Inventory', balance: 920000, currency: 'SAR', isActive: true, level: 1 },
+  { id: 'acc-1040', tenantId: 'ten-001', companyId: 'comp-001', code: '1040', name: 'Input VAT Recoverable', nameAr: 'ضريبة القيمة المضافة المدخلة القابلة للاسترداد', category: 'Asset', accountType: 'TaxReceivable', balance: 45000, currency: 'SAR', isActive: true, level: 1 },
   { id: 'acc-1050', tenantId: 'ten-001', companyId: 'comp-001', code: '1050', name: 'Fixed Assets - IT Equipment', nameAr: 'الأصول الثابتة - أجهزة وتقنية', category: 'Asset', accountType: 'Property', balance: 340000, currency: 'SAR', isActive: true, level: 1 },
   
   // Liabilities

@@ -78,6 +78,8 @@ export interface PilotBackupMetadata {
   platformVersion: string;
   architectureBaseline: string;
   checksumSha256: string;
+  checksum?: string;
+  schemaVersion?: number;
   totalRecords: number;
   collectionCounts: Record<string, number>;
 }

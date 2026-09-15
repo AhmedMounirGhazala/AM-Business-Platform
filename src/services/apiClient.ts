@@ -68,29 +68,100 @@ import {
   InventoryHealthMetrics,
   InventoryIntegrityReport,
   InventoryCertificationReport,
-  InventoryClosingAuditRecord
+  InventoryClosingAuditRecord,
+  TenantBranding,
+  BrandingPublicMetadata,
+  BrandingValidationResult,
+  TenantAssetMetadata,
+  AMPlatformIdentity
 } from '../types';
 
 
 export class ApiClient {
-  private static async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(`/api/v1${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-      ...options,
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(errData.error || `HTTP ${res.status}`);
+  private static token: string | null = null;
+
+  public static setToken(token: string | null): void {
+    this.token = token;
+  }
+
+  public static getToken(): string | null {
+    return this.token;
+  }
+
+  private static async request<T>(endpoint: string, options?: RequestInit, retryCount = 0): Promise<T> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...((options?.headers as Record<string, string>) || {}),
+    };
+
+    if (this.token && !headers['Authorization'] && !headers['authorization']) {
+      headers['Authorization'] = `Bearer ${this.token}`;
     }
-    return res.json();
+
+    try {
+      const res = await fetch(`/api/v1${endpoint}`, {
+        ...options,
+        headers,
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+      return res.json();
+    } catch (err: any) {
+      // Retry once on transient network disconnects / cold server boot
+      const isGet = !options?.method || options.method.toUpperCase() === 'GET';
+      if (retryCount < 2 && isGet && (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError'))) {
+        await new Promise(r => setTimeout(r, 400 * Math.pow(2, retryCount)));
+        return this.request<T>(endpoint, options, retryCount + 1);
+      }
+      throw err;
+    }
   }
 
   // Auth & System Context
-  static async getAuthMe(): Promise<{ user: User; tenant: Tenant; company: Company }> {
-    return this.request('/auth/me');
+  static async getAuthMe(): Promise<{ user: User; tenant: Tenant; company: Company; token?: string }> {
+    const data = await this.request<{ user: User; tenant: Tenant; company: Company; token?: string }>('/auth/me');
+    if (data.token) {
+      this.setToken(data.token);
+    }
+    return data;
+  }
+
+  static async login(email: string, password: string): Promise<{ success: boolean; user: User; token: string }> {
+    const res = await this.request<{ success: boolean; user: User; token: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.token) {
+      this.setToken(res.token);
+    }
+    return res;
+  }
+
+  static async verifyPin(userId: string, pin: string): Promise<{ success: boolean; authorized: boolean; cashier: User; token: string }> {
+    const res = await this.request<{ success: boolean; authorized: boolean; cashier: User; token: string }>('/auth/verify-pin', {
+      method: 'POST',
+      body: JSON.stringify({ userId, pin }),
+    });
+    if (res.token) {
+      this.setToken(res.token);
+    }
+    return res;
+  }
+
+  static async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    return this.request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ userId, currentPassword, newPassword }),
+    });
+  }
+
+  static async changePin(userId: string, currentPin: string, newPin: string): Promise<{ success: boolean; message: string }> {
+    return this.request('/auth/change-pin', {
+      method: 'POST',
+      body: JSON.stringify({ userId, currentPin, newPin }),
+    });
   }
 
   static async getTenants(): Promise<Tenant[]> {
@@ -2607,6 +2678,60 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify(payload)
     });
+  }
+
+  // ==========================================================================
+  // P0-08 TENANT IDENTITY & WHITE-LABEL BRANDING RUNTIME
+  // ==========================================================================
+
+  static async getBranding(tenantId?: string, companyId?: string): Promise<{ success: boolean; branding: TenantBranding }> {
+    const params = new URLSearchParams();
+    if (tenantId) params.append('tenantId', tenantId);
+    if (companyId) params.append('companyId', companyId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request(`/branding${query}`);
+  }
+
+  static async getPublicBranding(tenantId: string): Promise<{ success: boolean; branding: BrandingPublicMetadata }> {
+    return this.request(`/branding/public/${encodeURIComponent(tenantId)}`);
+  }
+
+  static async updateBranding(payload: Partial<TenantBranding>): Promise<{ success: boolean; branding: TenantBranding; auditHash: string }> {
+    return this.request('/branding', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  static async resetBranding(companyId?: string): Promise<{ success: boolean; branding: TenantBranding; auditHash: string }> {
+    return this.request('/branding/reset', {
+      method: 'POST',
+      body: JSON.stringify({ companyId })
+    });
+  }
+
+  static async previewBranding(payload: Partial<TenantBranding>): Promise<BrandingValidationResult> {
+    return this.request('/branding/preview', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  static async uploadBrandingAsset(payload: {
+    assetType: 'logo' | 'darkLogo' | 'favicon' | 'documentHeader';
+    fileName: string;
+    mimeType: string;
+    fileDataBase64: string;
+    tenantId?: string;
+  }): Promise<{ success: boolean; asset: TenantAssetMetadata }> {
+    return this.request('/branding/assets', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  static async getPlatformBranding(): Promise<{ success: boolean; platformIdentity: AMPlatformIdentity; platformBranding: TenantBranding }> {
+    return this.request('/branding/platform');
   }
 }
 

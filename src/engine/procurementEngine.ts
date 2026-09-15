@@ -39,6 +39,7 @@ import { StockMovement } from '../types/index';
 import { MasterDataService } from './masterDataService';
 import { WorkflowEngine } from './workflowEngine';
 import { ProcurementBudgetEngine } from './procurementBudgetEngine';
+import { TaxEngine } from './taxEngine';
 export * from './purchaseOrderEngine';
 
 export class ProcurementEngine {
@@ -192,7 +193,12 @@ export class ProcurementEngine {
         taxCategoryId = taxCat.id;
         taxCategoryCode = taxCat.code;
         if (!taxCat.isExempt && !taxCat.isZeroRated) {
-          estimatedTaxAmount = (qty * unitPrice) * 0.15; // 15% standard rate
+          const resolvedRate = TaxEngine.resolveTaxRate({
+            tenantId,
+            taxCategory: taxCat.code || taxCat.name,
+            countryOrJurisdiction: 'SA'
+          }).taxRate;
+          estimatedTaxAmount = (qty * unitPrice) * resolvedRate;
         }
       }
     }

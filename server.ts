@@ -4,7 +4,7 @@
  * Includes Financial Events Engine, Configurable Posting Rules Engine, Universal Workflow Engine, and Master Data Services
  */
 
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
@@ -215,6 +215,17 @@ import { SalesEngine } from './src/engine/salesEngine';
 import { OfflineSalesSyncEngine } from './src/engine/offlineSalesSyncEngine';
 import { IndustryConfigEngine } from './src/engine/industryConfigEngine';
 import { ComplianceAdapterEngine } from './src/engine/complianceAdapterEngine';
+import { VerticalProfileRegistry } from './src/verticals/verticalProfileRegistry';
+import { IndustryVerticalManager } from './src/verticals/industryVerticalManager';
+import { CommercialDistributionEngine } from './src/verticals/commercialDistributionEngine';
+import { RestaurantFnBEngine } from './src/verticals/restaurantFnBEngine';
+import { MobileRetailEngine } from './src/verticals/mobileRetailEngine';
+import { FashionRetailEngine } from './src/verticals/fashionRetailEngine';
+import { ApparelManufacturingEngine } from './src/verticals/apparelManufacturingEngine';
+import { ComplianceEngine } from './src/compliance/complianceEngine';
+import { EgyptianTaxAuthorityAdapter } from './src/compliance/etaAdapter';
+import { SaudiZatcaAdapter } from './src/compliance/zatcaAdapter';
+import { ZatcaTlvEncoder } from './src/compliance/tlvEncoder';
 import { UniversalExportEngine } from './src/engine/universalExportEngine';
 import { Phase31HardeningSuite } from './src/engine/phase31HardeningSuite';
 import { PilotReadinessPhase3BHardeningSuite } from './src/engine/pilotReadinessPhase3BHardeningSuite';
@@ -253,6 +264,8 @@ import { ManufacturingYieldSpcShiftEngine } from './src/engine/manufacturingYiel
 import { Phase32D08HardeningSuite } from './src/engine/phase32D08HardeningSuite';
 import { ManufacturingGenealogyEcoDisassemblyEngine } from './src/engine/manufacturingGenealogyEcoDisassemblyEngine';
 import { Phase32D09HardeningSuite } from './src/engine/phase32D09HardeningSuite';
+import { SupplierInvitationEngine } from './src/engine/supplierInvitationEngine';
+import { SupplierQuotationEngine } from './src/engine/supplierQuotationEngine';
 import {
   RepetitiveProductionSchedule,
   RemanTeardownOrder,
@@ -412,7 +425,18 @@ import {
   CostCalculationLog,
   CostBusinessEvent,
   ItemCategory,
-  CostingMethod
+  CostingMethod,
+  DocumentNumberingRule,
+  RestaurantTable,
+  KitchenDisplayOrder,
+  KitchenWasteRecord,
+  CRMTicket,
+  ProjectTimesheet,
+  DocumentComment,
+  ActivityLog,
+  User,
+  Tenant,
+  Company
 } from './src/types';
 
 import { FinancialEventEngine } from './src/engine/financialEventEngine';
@@ -434,6 +458,14 @@ import { ValidationEngine } from './src/engine/validationEngine';
 import { ConfigurationEngine } from './src/engine/configurationEngine';
 import { Phase26HardeningSuite } from './src/engine/phase26HardeningSuite';
 import { PilotDatabaseService } from './server/pilotDatabase';
+import { SecurityEngine } from './server/securityEngine';
+import { BrandingEngine } from './server/brandingEngine';
+import {
+  initDurableCollection,
+  persistEntity,
+  deletePersistedEntity,
+  executeTransaction
+} from './server/persistenceRegistry';
 import { PilotMasterDataImportRow } from './src/types/pilot';
 
 dotenv.config();
@@ -1421,8 +1453,201 @@ let syncConflicts: SyncConflictRecord[] = [
   }
 ];
 let offlineDocumentLineages: OfflineDocumentLineage[] = [];
-let industryProfiles: IndustryProfileConfig[] = IndustryConfigEngine.getStandardIndustryProfiles();
+let industryProfiles: IndustryProfileConfig[] = IndustryConfigEngine.getAllIndustryProfiles();
 let idempotencyKeysStore: Set<string> = new Set(['idemp-prev-processed-001', 'idemp-prev-processed-002']);
+
+// ==================== PLATFORM DMS, RESTAURANT, CRM & PROJECTS STATE ====================
+const INITIAL_PLATFORM_ATTACHMENTS: DocumentAttachment[] = [
+  {
+    id: 'ATT-001',
+    entityType: 'TREASURY_TRANSACTION',
+    entityId: 'tr-001',
+    entityNumber: 'TR-2026-TRF-00001',
+    fileName: 'Bank_Swift_Advice_Riyad_001.pdf',
+    fileSize: 482100,
+    fileSizeBytesFormatted: '470.80 KB',
+    mimeType: 'application/pdf',
+    category: 'RECEIPT',
+    version: 1,
+    isLatest: true,
+    downloadUrl: '/api/v1/platform/attachments/ATT-001/download',
+    uploadedBy: 'usr-001',
+    uploadedByName: 'Ahmed Al-Mansoor',
+    uploadedAt: '2026-08-14T09:15:00.000Z',
+    sha256Checksum: PlatformEngine.computeSha256('ATT-001:Bank_Swift_Advice_Riyad_001.pdf'),
+    isVerified: true,
+    description: 'Official Bank SWIFT MT103 confirmation advice for supplier transfer'
+  },
+  {
+    id: 'ATT-002',
+    entityType: 'FIXED_ASSET',
+    entityId: 'fa-001',
+    entityNumber: 'FA-2026-MACH-0001',
+    fileName: 'CNC_Machine_Purchase_Contract_Warranty.pdf',
+    fileSize: 1850400,
+    fileSizeBytesFormatted: '1.76 MB',
+    mimeType: 'application/pdf',
+    category: 'CONTRACT',
+    version: 1,
+    isLatest: true,
+    downloadUrl: '/api/v1/platform/attachments/ATT-002/download',
+    uploadedBy: 'usr-002',
+    uploadedByName: 'Sarah Jenkins',
+    uploadedAt: '2026-08-14T10:00:00.000Z',
+    sha256Checksum: PlatformEngine.computeSha256('ATT-002:CNC_Machine_Purchase_Contract_Warranty.pdf'),
+    isVerified: true,
+    description: '5-Year Manufacturer Warranty and OEM Calibration Certificate'
+  }
+];
+
+const INITIAL_PLATFORM_TIMELINE: ActivityTimelineEvent[] = [
+  {
+    id: 'ACT-001',
+    entityType: 'TREASURY_TRANSACTION',
+    entityId: 'tr-001',
+    entityNumber: 'TR-2026-TRF-00001',
+    action: 'CREATED',
+    performedByUserId: 'usr-001',
+    performedByName: 'Ahmed Al-Mansoor',
+    performedByRole: 'TREASURY_OFFICER',
+    timestamp: '2026-08-14T09:00:00.000Z',
+    correlationId: 'CORR-TR-001',
+    summaryEn: 'Initiated Supplier Disbursement Transfer of 150,000 SAR',
+    summaryAr: 'إنشاء أمر صرف مالي للمورد بمبلغ 150,000 ريال',
+    sha256Hash: PlatformEngine.computeSha256('ACT-001:INITIATE_TRANSFER')
+  },
+  {
+    id: 'ACT-002',
+    entityType: 'WORKFLOW_INSTANCE',
+    entityId: 'WFI-2026-001',
+    entityNumber: 'PO-2026-00042',
+    action: 'APPROVED',
+    performedByUserId: 'usr-001',
+    performedByName: 'Ahmed Al-Mansoor',
+    performedByRole: 'PROCUREMENT_SPECIALIST',
+    timestamp: '2026-08-14T10:15:00.000Z',
+    correlationId: 'CORR-WF-001',
+    summaryEn: 'Approved Step 1 (Procurement Review) for PO-2026-00042',
+    summaryAr: 'اعتماد المرحلة الأولى لأمر الشراء PO-2026-00042',
+    sha256Hash: PlatformEngine.computeSha256('ACT-002:APPROVE_STEP_1')
+  }
+];
+
+const INITIAL_RESTAURANT_TABLES: RestaurantTable[] = [
+  {
+    id: 'tbl-001',
+    tableNumber: 'T-01',
+    capacity: 4,
+    section: 'Main Dining Hall',
+    status: 'AVAILABLE',
+    companyId: 'comp-001',
+    branchId: 'br-001'
+  },
+  {
+    id: 'tbl-002',
+    tableNumber: 'T-02',
+    capacity: 2,
+    section: 'Terrace Garden',
+    status: 'OCCUPIED',
+    currentOrderId: 'kds-001',
+    activeGuests: 2,
+    companyId: 'comp-001',
+    branchId: 'br-001'
+  },
+  {
+    id: 'tbl-003',
+    tableNumber: 'VIP-01',
+    capacity: 8,
+    section: 'Royal VIP Lounge',
+    status: 'RESERVED',
+    companyId: 'comp-001',
+    branchId: 'br-001'
+  }
+];
+
+const INITIAL_KITCHEN_ORDERS: KitchenDisplayOrder[] = [
+  {
+    id: 'kds-001',
+    orderNumber: 'KDS-ORD-001',
+    tableNumber: 'T-02',
+    orderType: 'DINE_IN',
+    status: 'PREPARING',
+    station: 'HOT_KITCHEN',
+    priority: 'NORMAL',
+    items: [
+      { itemId: 'item-fnb-01', itemName: 'Grilled Seabass with Saffron Rice', quantity: 2, status: 'COOKING', notes: 'Extra crispy skin' },
+      { itemId: 'item-fnb-02', itemName: 'Mediterranean Mezze Platter', quantity: 1, status: 'DONE' }
+    ],
+    createdAt: '2026-09-08T18:30:00Z',
+    companyId: 'comp-001',
+    branchId: 'br-001'
+  }
+];
+
+const INITIAL_KITCHEN_WASTE: KitchenWasteRecord[] = [
+  {
+    id: 'kw-001',
+    wasteNumber: 'WST-2026-0001',
+    date: '2026-09-08',
+    itemId: 'item-fnb-03',
+    itemName: 'Fresh Salmon Fillet',
+    quantity: 1.5,
+    uom: 'KG',
+    costAmount: 180.0,
+    reason: 'TRIMMING',
+    reportedBy: 'Chef Karim',
+    actionTaken: 'Standard culinary trimming logged to COGS variance',
+    companyId: 'comp-001',
+    branchId: 'br-001'
+  }
+];
+
+const INITIAL_CRM_TICKETS: CRMTicket[] = [
+  {
+    id: 'tkt-001',
+    ticketNumber: 'TCK-2026-0001',
+    customerId: 'cust-001',
+    customerName: 'Al-Madina Commercial Group',
+    subject: 'Request for scheduled statement reconciliation',
+    description: 'Customer requested consolidated monthly statement with electronic VAT breakdown for August 2026.',
+    priority: 'MEDIUM',
+    status: 'OPEN',
+    category: 'BILLING',
+    assignedTo: 'usr-001',
+    assignedToName: 'Ahmed Al-Mansoor',
+    createdAt: '2026-09-08T11:00:00Z',
+    companyId: 'comp-001'
+  }
+];
+
+const INITIAL_PROJECT_TIMESHEETS: ProjectTimesheet[] = [
+  {
+    id: 'ts-001',
+    timesheetNumber: 'TS-2026-W36-001',
+    projectId: 'proj-001',
+    projectName: 'ERP Pilot Deployment Phase 1',
+    employeeId: 'emp-001',
+    employeeName: 'Eng. Tarek Fahmy',
+    date: '2026-09-08',
+    hoursWorked: 8.5,
+    billableHours: 8.0,
+    taskDescription: 'On-site POS terminal calibration and cash float setup verification',
+    hourlyRate: 150.0,
+    totalCost: 1275.0,
+    status: 'APPROVED',
+    approvedBy: 'usr-001',
+    approvedAt: '2026-09-08T17:00:00Z',
+    companyId: 'comp-001'
+  }
+];
+
+let platformAttachments: DocumentAttachment[] = [...INITIAL_PLATFORM_ATTACHMENTS];
+let platformActivityTimeline: ActivityTimelineEvent[] = [...INITIAL_PLATFORM_TIMELINE];
+let restaurantTables: RestaurantTable[] = [...INITIAL_RESTAURANT_TABLES];
+let kitchenOrders: KitchenDisplayOrder[] = [...INITIAL_KITCHEN_ORDERS];
+let kitchenWasteRecords: KitchenWasteRecord[] = [...INITIAL_KITCHEN_WASTE];
+let crmTickets: CRMTicket[] = [...INITIAL_CRM_TICKETS];
+let projectTimesheets: ProjectTimesheet[] = [...INITIAL_PROJECT_TIMESHEETS];
 
 // ==================== PILOT READINESS PERSISTENCE ENGINE ====================
 const pilotDb = PilotDatabaseService.getInstance();
@@ -1435,66 +1660,395 @@ if (startupPersistenceValidation.shouldAbort) {
 
 function initializePilotPersistence(): void {
   try {
-    if (pilotDb.isCollectionInitialized('inventory')) {
-      inventory = pilotDb.loadCollection('inventory');
-    } else {
-      pilotDb.saveCollection('inventory', inventory);
+    // Enterprise Setup & Organizational Model
+    tenants = initDurableCollection('tenants', tenants, pilotDb);
+    companies = initDurableCollection('companies', companies, pilotDb);
+    branches = initDurableCollection('branches', branches, pilotDb);
+    departments = initDurableCollection('departments', departments, pilotDb);
+    costCenters = initDurableCollection('costCenters', costCenters, pilotDb);
+    profitCenters = initDurableCollection('profitCenters', profitCenters, pilotDb);
+    projects = initDurableCollection('projects', projects, pilotDb);
+    warehouses = initDurableCollection('warehouses', warehouses, pilotDb);
+    currencies = initDurableCollection('currencies', currencies, pilotDb);
+    exchangeRates = initDurableCollection('exchangeRates', exchangeRates, pilotDb);
+    fiscalYears = initDurableCollection('fiscalYears', fiscalYears, pilotDb);
+    fiscalPeriods = initDurableCollection('fiscalPeriods', fiscalPeriods, pilotDb);
+    numberingRules = initDurableCollection('numberingRules', numberingRules, pilotDb);
+    workflowRules = initDurableCollection('workflowRules', workflowRules, pilotDb);
+    approvalRequests = initDurableCollection('approvalRequests', approvalRequests, pilotDb);
+    taxRules = initDurableCollection('taxRules', taxRules, pilotDb);
+    unitsOfMeasure = initDurableCollection('unitsOfMeasure', unitsOfMeasure, pilotDb);
+    itemCategories = initDurableCollection('itemCategories', itemCategories, pilotDb);
+    paymentTerms = initDurableCollection('paymentTerms', paymentTerms, pilotDb);
+    postingRules = initDurableCollection('postingRules', postingRules, pilotDb);
+    industryProfiles = initDurableCollection('industryProfiles', industryProfiles, pilotDb);
+    users = initDurableCollection('users', users, pilotDb);
+    // Initialize durable rate limiting and account lockout persistence in SecurityEngine
+    SecurityEngine.initPersistence(pilotDb);
+    // Ensure all users have secure cryptographic credentials (PBKDF2/SHA512)
+    users.forEach(u => {
+      let updated = false;
+      if (!u.passwordHash) {
+        const initialPassword = process.env.INITIAL_ADMIN_PASSWORD || 'Admin@2026!';
+        u.passwordHash = SecurityEngine.hashPassword(initialPassword);
+        updated = true;
+      }
+      if (!u.pinHash) {
+        const initialPin = process.env.INITIAL_CASHIER_PIN || '1234';
+        u.pinHash = SecurityEngine.hashPin(initialPin);
+        updated = true;
+      }
+      if (updated) {
+        persistEntity('users', u, pilotDb);
+      }
+    });
+    employees = initDurableCollection('employees', employees, pilotDb);
+    leads = initDurableCollection('leads', leads, pilotDb);
+
+    // Master Data Catalog
+    brands = initDurableCollection('brands', brands, pilotDb);
+    models = initDurableCollection('models', models, pilotDb);
+    itemGroups = initDurableCollection('itemGroups', itemGroups, pilotDb);
+    uomConversions = initDurableCollection('uomConversions', uomConversions, pilotDb);
+    packagingUnits = initDurableCollection('packagingUnits', packagingUnits, pilotDb);
+    warehouseZones = initDurableCollection('warehouseZones', warehouseZones, pilotDb);
+    binLocations = initDurableCollection('binLocations', binLocations, pilotDb);
+    warehouseLocations = initDurableCollection('warehouseLocations', warehouseLocations, pilotDb);
+    enterprisePriceLists = initDurableCollection('enterprisePriceLists', enterprisePriceLists, pilotDb);
+    discountRules = initDurableCollection('discountRules', discountRules, pilotDb);
+    promotionCampaigns = initDurableCollection('promotionCampaigns', promotionCampaigns, pilotDb);
+
+    // General Ledger & Financial Operations
+    accounts = initDurableCollection('accounts', accounts, pilotDb);
+    glAccounts = initDurableCollection('glAccounts', glAccounts, pilotDb);
+    journalEntries = initDurableCollection('journalEntries', journalEntries, pilotDb);
+    glJournals = initDurableCollection('glJournals', glJournals, pilotDb);
+    financialEvents = initDurableCollection('financialEvents', financialEvents, pilotDb);
+    financialAuditRecords = initDurableCollection('financialAuditRecords', financialAuditRecords, pilotDb);
+    glFiscalYears = initDurableCollection('glFiscalYears', glFiscalYears, pilotDb);
+    glFiscalPeriods = initDurableCollection('glFiscalPeriods', glFiscalPeriods, pilotDb);
+    glRecurringSchedules = initDurableCollection('glRecurringSchedules', glRecurringSchedules, pilotDb);
+    glYearEndRecords = initDurableCollection('glYearEndRecords', glYearEndRecords, pilotDb);
+    glClosingSnapshots = initDurableCollection('glClosingSnapshots', glClosingSnapshots, pilotDb);
+    glFXSnapshots = initDurableCollection('glFXSnapshots', glFXSnapshots, pilotDb);
+    glAuditTrail = initDurableCollection('glAuditTrail', glAuditTrail, pilotDb);
+
+    // Fixed Assets & Asset Accounting
+    fixedAssetClasses = initDurableCollection('fixedAssetClasses', fixedAssetClasses, pilotDb);
+    fixedAssetMasters = initDurableCollection('fixedAssetMasters', fixedAssetMasters, pilotDb);
+    fixedAssetAcquisitions = initDurableCollection('fixedAssetAcquisitions', fixedAssetAcquisitions, pilotDb);
+    fixedAssetTransfers = initDurableCollection('fixedAssetTransfers', fixedAssetTransfers, pilotDb);
+    fixedAssetDisposals = initDurableCollection('fixedAssetDisposals', fixedAssetDisposals, pilotDb);
+    fixedAssetRevaluations = initDurableCollection('fixedAssetRevaluations', fixedAssetRevaluations, pilotDb);
+    fixedAssetImpairments = initDurableCollection('fixedAssetImpairments', fixedAssetImpairments, pilotDb);
+    fixedAssetMaintenances = initDurableCollection('fixedAssetMaintenances', fixedAssetMaintenances, pilotDb);
+    physicalVerificationSessions = initDurableCollection('physicalVerificationSessions', physicalVerificationSessions, pilotDb);
+    fixedAssetAuditLogs = initDurableCollection('fixedAssetAuditLogs', fixedAssetAuditLogs, pilotDb);
+    if (pilotDb.isCollectionInitialized('postedDepreciationPeriods')) {
+      const persistedPeriods = pilotDb.loadCollection<{ id: string }>('postedDepreciationPeriods');
+      persistedPeriods.forEach(p => {
+        if (p && p.id) postedDepreciationPeriods.add(p.id);
+      });
     }
 
-    if (pilotDb.isCollectionInitialized('stockMovements')) {
-      stockMovements = pilotDb.loadCollection('stockMovements');
-    } else {
-      pilotDb.saveCollection('stockMovements', stockMovements);
-    }
+    // Treasury & Cash Management
+    treasuryBanks = initDurableCollection('treasuryBanks', treasuryBanks, pilotDb);
+    treasuryBankAccounts = initDurableCollection('treasuryBankAccounts', treasuryBankAccounts, pilotDb);
+    treasuryCashAccounts = initDurableCollection('treasuryCashAccounts', treasuryCashAccounts, pilotDb);
+    treasuryChequeBooks = initDurableCollection('treasuryChequeBooks', treasuryChequeBooks, pilotDb);
+    treasuryCheques = initDurableCollection('treasuryCheques', treasuryCheques, pilotDb);
+    treasuryTransactions = initDurableCollection('treasuryTransactions', treasuryTransactions, pilotDb);
+    treasuryExchangeRates = initDurableCollection('treasuryExchangeRates', treasuryExchangeRates, pilotDb);
+    treasuryBankCharges = initDurableCollection('treasuryBankCharges', treasuryBankCharges, pilotDb);
+    treasuryPaymentCalendar = initDurableCollection('treasuryPaymentCalendar', treasuryPaymentCalendar, pilotDb);
+    treasuryBankStatements = initDurableCollection('treasuryBankStatements', treasuryBankStatements, pilotDb);
+    treasuryReconciliations = initDurableCollection('treasuryReconciliations', treasuryReconciliations, pilotDb);
+    treasuryAuditVault = initDurableCollection('treasuryAuditVault', treasuryAuditVault, pilotDb);
 
-    if (pilotDb.isCollectionInitialized('customers')) {
-      customers = pilotDb.loadCollection('customers');
-    } else {
-      pilotDb.saveCollection('customers', customers);
-    }
+    // Procurement & Sourcing
+    vendorCategories = initDurableCollection('vendorCategories', vendorCategories, pilotDb);
+    vendors = initDurableCollection('vendors', vendors, pilotDb);
+    legacyVendors = initDurableCollection('legacyVendors', legacyVendors, pilotDb);
+    purchaseRequisitions = initDurableCollection('purchaseRequisitions', purchaseRequisitions, pilotDb);
+    rfqs = initDurableCollection('rfqs', rfqs, pilotDb);
+    vendorQuotations = initDurableCollection('vendorQuotations', vendorQuotations, pilotDb);
+    purchaseOrders = initDurableCollection('purchaseOrders', purchaseOrders, pilotDb);
+    purchaseApprovalRules = initDurableCollection('purchaseApprovalRules', purchaseApprovalRules, pilotDb);
+    purchaseAmendments = initDurableCollection('purchaseAmendments', purchaseAmendments, pilotDb);
+    vendorReturns = initDurableCollection('vendorReturns', vendorReturns, pilotDb);
+    goodsReceipts = initDurableCollection('goodsReceipts', goodsReceipts, pilotDb);
+    purchaseAuditLogs = initDurableCollection('purchaseAuditLogs', purchaseAuditLogs, pilotDb);
+    vendorPriceHistory = initDurableCollection('vendorPriceHistory', vendorPriceHistory, pilotDb);
+    ersInvoices = initDurableCollection('ersInvoices', ersInvoices, pilotDb);
+    consignmentAgreements = initDurableCollection('consignmentAgreements', consignmentAgreements, pilotDb);
+    consignmentStockRecords = initDurableCollection('consignmentStockRecords', consignmentStockRecords, pilotDb);
+    consignmentWithdrawals = initDurableCollection('consignmentWithdrawals', consignmentWithdrawals, pilotDb);
+    consignmentSettlements = initDurableCollection('consignmentSettlements', consignmentSettlements, pilotDb);
+    landedCostAdjustments = initDurableCollection('landedCostAdjustments', landedCostAdjustments, pilotDb);
+    supplierScorecards = initDurableCollection('supplierScorecards', supplierScorecards, pilotDb);
+    vendorPrepayments = initDurableCollection('vendorPrepayments', vendorPrepayments, pilotDb);
+    prepaymentApplicationRecords = initDurableCollection('prepaymentApplicationRecords', prepaymentApplicationRecords, pilotDb);
 
-    if (pilotDb.isCollectionInitialized('posRegisters')) {
-      posRegisters = pilotDb.loadCollection('posRegisters');
-    } else {
-      pilotDb.saveCollection('posRegisters', posRegisters);
-    }
+    // Accounts Payable & Supplier Invoicing
+    supplierInvoices = initDurableCollection('supplierInvoices', supplierInvoices, pilotDb);
+    apVouchers = initDurableCollection('apVouchers', apVouchers, pilotDb);
+    supplierCreditNotes = initDurableCollection('supplierCreditNotes', supplierCreditNotes, pilotDb);
+    paymentProposals = initDurableCollection('paymentProposals', paymentProposals, pilotDb);
+    paymentBatches = initDurableCollection('paymentBatches', paymentBatches, pilotDb);
+    paymentAllocations = initDurableCollection('paymentAllocations', paymentAllocations, pilotDb);
+    agingSnapshots = initDurableCollection('agingSnapshots', agingSnapshots, pilotDb);
+    paymentReversals = initDurableCollection('paymentReversals', paymentReversals, pilotDb);
+    apAuditLogs = initDurableCollection('apAuditLogs', apAuditLogs, pilotDb);
+    supplierPayments = initDurableCollection('supplierPayments', supplierPayments, pilotDb);
+    purchaseInvoices = initDurableCollection('purchaseInvoices', purchaseInvoices, pilotDb);
 
-    if (pilotDb.isCollectionInitialized('posShifts')) {
-      posShifts = pilotDb.loadCollection('posShifts');
-    } else {
-      pilotDb.saveCollection('posShifts', posShifts);
-    }
+    // Sales & Accounts Receivable
+    customers = initDurableCollection('customers', customers, pilotDb);
+    arCustomers = initDurableCollection('arCustomers', arCustomers, pilotDb);
+    salesQuotations = initDurableCollection('salesQuotations', salesQuotations, pilotDb);
+    salesOrders = initDurableCollection('salesOrders', salesOrders, pilotDb);
+    salesInvoices = initDurableCollection('salesInvoices', salesInvoices, pilotDb);
+    salesReturns = initDurableCollection('salesReturns', salesReturns, pilotDb);
+    arSalesInvoices = initDurableCollection('arSalesInvoices', arSalesInvoices, pilotDb);
+    arCreditNotes = initDurableCollection('arCreditNotes', arCreditNotes, pilotDb);
+    arDebitNotes = initDurableCollection('arDebitNotes', arDebitNotes, pilotDb);
+    arReceipts = initDurableCollection('arReceipts', arReceipts, pilotDb);
+    arReceiptAllocations = initDurableCollection('arReceiptAllocations', arReceiptAllocations, pilotDb);
+    arAgingSnapshots = initDurableCollection('arAgingSnapshots', arAgingSnapshots, pilotDb);
+    arCollectionNotes = initDurableCollection('arCollectionNotes', arCollectionNotes, pilotDb);
+    arPromisesToPay = initDurableCollection('arPromisesToPay', arPromisesToPay, pilotDb);
+    arRevRecSchedules = initDurableCollection('arRevRecSchedules', arRevRecSchedules, pilotDb);
+    arAuditLogs = initDurableCollection('arAuditLogs', arAuditLogs, pilotDb);
+    customerPayments = initDurableCollection('customerPayments', customerPayments, pilotDb);
+    salesContracts = initDurableCollection('salesContracts', salesContracts, pilotDb);
+    customerConsignmentStocks = initDurableCollection('customerConsignmentStocks', customerConsignmentStocks, pilotDb);
+    consignmentMovementRecords = initDurableCollection('consignmentMovementRecords', consignmentMovementRecords, pilotDb);
+    customerRebateAgreements = initDurableCollection('customerRebateAgreements', customerRebateAgreements, pilotDb);
+    dropShipmentOrders = initDurableCollection('dropShipmentOrders', dropShipmentOrders, pilotDb);
+    customerCreditProfiles = initDurableCollection('customerCreditProfiles', customerCreditProfiles, pilotDb);
 
-    if (pilotDb.isCollectionInitialized('posReceipts')) {
-      posReceipts = pilotDb.loadCollection('posReceipts');
-    } else {
-      pilotDb.saveCollection('posReceipts', posReceipts);
-    }
+    // POS & Retail Systems
+    posRegisters = initDurableCollection('posRegisters', posRegisters, pilotDb);
+    posShifts = initDurableCollection('posShifts', posShifts, pilotDb);
+    posReceipts = initDurableCollection('posReceipts', posReceipts, pilotDb);
+    posDevices = initDurableCollection('posDevices', posDevices, pilotDb);
+    offlineTransactionQueue = initDurableCollection('offlineTransactionQueue', offlineTransactionQueue, pilotDb);
+    offlineDocumentLineages = initDurableCollection('offlineDocumentLineages', offlineDocumentLineages, pilotDb);
+    syncAuditLogs = initDurableCollection('syncAuditLogs', syncAuditLogs, pilotDb);
+    syncConflicts = initDurableCollection('syncConflicts', syncConflicts, pilotDb);
 
-    if (pilotDb.isCollectionInitialized('journalEntries')) {
-      journalEntries = pilotDb.loadCollection('journalEntries');
-    } else {
-      pilotDb.saveCollection('journalEntries', journalEntries);
-    }
+    // Inventory, Warehousing & Costing
+    inventory = initDurableCollection('inventory', inventory, pilotDb);
+    stockMovements = initDurableCollection('stockMovements', stockMovements, pilotDb);
+    stockQuants = initDurableCollection('stockQuants', stockQuants, pilotDb);
+    stockLedgerEntries = initDurableCollection('stockLedgerEntries', stockLedgerEntries, pilotDb);
+    costLayers = initDurableCollection('costLayers', costLayers, pilotDb);
+    layerConsumptions = initDurableCollection('layerConsumptions', layerConsumptions, pilotDb);
+    avgCostRecords = initDurableCollection('avgCostRecords', avgCostRecords, pilotDb);
+    standardCostRecords = initDurableCollection('standardCostRecords', standardCostRecords, pilotDb);
+    costCalculationLogs = initDurableCollection('costCalculationLogs', costCalculationLogs, pilotDb);
+    costBusinessEvents = initDurableCollection('costBusinessEvents', costBusinessEvents, pilotDb);
+    batchLots = initDurableCollection('batchLots', batchLots, pilotDb);
+    serialNumbers = initDurableCollection('serialNumbers', serialNumbers, pilotDb);
+    inventoryPeriods = initDurableCollection('inventoryPeriods', inventoryPeriods, pilotDb);
+    fiscalInventoryLocks = initDurableCollection('fiscalInventoryLocks', fiscalInventoryLocks, pilotDb);
+    inventoryCountSessions = initDurableCollection('inventoryCountSessions', inventoryCountSessions, pilotDb);
+    reconciliationProposals = initDurableCollection('reconciliationProposals', reconciliationProposals, pilotDb);
+    inventoryClosingAuditRecords = initDurableCollection('inventoryClosingAuditRecords', inventoryClosingAuditRecords, pilotDb);
 
-    if (pilotDb.isCollectionInitialized('treasuryTransactions')) {
-      treasuryTransactions = pilotDb.loadCollection('treasuryTransactions');
-    } else {
-      pilotDb.saveCollection('treasuryTransactions', treasuryTransactions);
-    }
+    // Manufacturing & Shop Floor Execution
+    manufacturingBOMs = initDurableCollection('manufacturingBOMs', manufacturingBOMs, pilotDb);
+    manufacturingWorkCenters = initDurableCollection('manufacturingWorkCenters', manufacturingWorkCenters, pilotDb);
+    manufacturingRoutings = initDurableCollection('manufacturingRoutings', manufacturingRoutings, pilotDb);
+    manufacturingWorkOrders = initDurableCollection('manufacturingWorkOrders', manufacturingWorkOrders, pilotDb);
+    manufacturingGoodsIssues = initDurableCollection('manufacturingGoodsIssues', manufacturingGoodsIssues, pilotDb);
+    manufacturingGoodsReceipts = initDurableCollection('manufacturingGoodsReceipts', manufacturingGoodsReceipts, pilotDb);
+    manufacturingMRPReports = initDurableCollection('manufacturingMRPReports', manufacturingMRPReports, pilotDb);
+    shopFloorOperators = initDurableCollection('shopFloorOperators', shopFloorOperators, pilotDb);
+    shopFloorMachines = initDurableCollection('shopFloorMachines', shopFloorMachines, pilotDb);
+    shopFloorDispatches = initDurableCollection('shopFloorDispatches', shopFloorDispatches, pilotDb);
+    shopFloorTimeTickets = initDurableCollection('shopFloorTimeTickets', shopFloorTimeTickets, pilotDb);
+    shopFloorDowntimeEvents = initDurableCollection('shopFloorDowntimeEvents', shopFloorDowntimeEvents, pilotDb);
+    masterRecipes = initDurableCollection('masterRecipes', masterRecipes, pilotDb);
+    batchMasters = initDurableCollection('batchMasters', batchMasters, pilotDb);
+    processOrders = initDurableCollection('processOrders', processOrders, pilotDb);
+    workCenterCapacityProfiles = initDurableCollection('workCenterCapacityProfiles', workCenterCapacityProfiles, pilotDb);
+    subcontractOrders = initDurableCollection('subcontractOrders', subcontractOrders, pilotDb);
+    productionLines = initDurableCollection('productionLines', productionLines, pilotDb);
+    kanbanControlCycles = initDurableCollection('kanbanControlCycles', kanbanControlCycles, pilotDb);
+    configurableProductModels = initDurableCollection('configurableProductModels', configurableProductModels, pilotDb);
+    superBoms = initDurableCollection('superBoms', superBoms, pilotDb);
+    configuredVariantInstances = initDurableCollection('configuredVariantInstances', configuredVariantInstances, pilotDb);
+    deviationPermits = initDurableCollection('deviationPermits', deviationPermits, pilotDb);
+    recallIncidents = initDurableCollection('recallIncidents', recallIncidents, pilotDb);
+    energyConsumptionRecords = initDurableCollection('energyConsumptionRecords', energyConsumptionRecords, pilotDb);
+    carbonFootprintCalculations = initDurableCollection('carbonFootprintCalculations', carbonFootprintCalculations, pilotDb);
 
-    if (pilotDb.isCollectionInitialized('costLayers')) {
-      costLayers = pilotDb.loadCollection('costLayers');
-    } else {
-      pilotDb.saveCollection('costLayers', costLayers);
-    }
+    // Quality, Maintenance & Genealogy
+    qualityInspectionPlans = initDurableCollection('qualityInspectionPlans', qualityInspectionPlans, pilotDb);
+    qualityInspectionLots = initDurableCollection('qualityInspectionLots', qualityInspectionLots, pilotDb);
+    qualityNonConformanceReports = initDurableCollection('qualityNonConformanceReports', qualityNonConformanceReports, pilotDb);
+    qualityCAPAs = initDurableCollection('qualityCAPAs', qualityCAPAs, pilotDb);
+    serialGenealogies = initDurableCollection('serialGenealogies', serialGenealogies, pilotDb);
+    standardCostEstimates = initDurableCollection('standardCostEstimates', standardCostEstimates, pilotDb);
+    wipRevaluationRecords = initDurableCollection('wipRevaluationRecords', wipRevaluationRecords, pilotDb);
+    functionalLocations = initDurableCollection('functionalLocations', functionalLocations, pilotDb);
+    equipmentAssets = initDurableCollection('equipmentAssets', equipmentAssets, pilotDb);
+    preventiveMaintenanceSchedules = initDurableCollection('preventiveMaintenanceSchedules', preventiveMaintenanceSchedules, pilotDb);
+    maintenanceWorkOrders = initDurableCollection('maintenanceWorkOrders', maintenanceWorkOrders, pilotDb);
+    engineeringChangeOrders = initDurableCollection('engineeringChangeOrders', engineeringChangeOrders, pilotDb);
 
+    // Audit Logs & Relationships
+    auditLogs = initDurableCollection('auditLogs', auditLogs, pilotDb);
+    documentRelationships = initDurableCollection('documentRelationships', documentRelationships, pilotDb);
+
+    // Idempotency Keys Cache
     if (pilotDb.isCollectionInitialized('idempotencyKeys')) {
       const persistedKeys = pilotDb.loadCollection<{ id: string }>('idempotencyKeys');
       persistedKeys.forEach(k => {
         if (k && k.id) idempotencyKeysStore.add(k.id);
       });
     }
+
+    // MasterDataService Persistence & Hydration
+    const mdExport = MasterDataService.exportState();
+    const mdKeys = Object.keys(mdExport) as Array<keyof typeof mdExport>;
+    const hydratedState: any = {};
+    for (const key of mdKeys) {
+      const collName = `masterData_${key}`;
+      if (pilotDb.isCollectionInitialized(collName)) {
+        hydratedState[key] = pilotDb.loadCollection(collName);
+      } else {
+        const seed = mdExport[key] || [];
+        if (seed.length > 0) {
+          pilotDb.saveCollection(collName, seed as any);
+        }
+      }
+    }
+    MasterDataService.hydrate(hydratedState);
+    MasterDataService.setMutationListener((entityType, entity) => {
+      try {
+        const targetCollection = `masterData_${entityType.toLowerCase()}s`;
+        pilotDb.saveEntity(targetCollection, entity);
+      } catch (e) {
+        console.error(`[MasterDataPersistence] Failed persisting ${entityType}:`, e);
+      }
+    });
+
+    // Master Setup, Geography & Attributes Durability
+    countriesMaster = initDurableCollection('countriesMaster', countriesMaster, pilotDb);
+    taxSystemsMaster = initDurableCollection('taxSystemsMaster', taxSystemsMaster, pilotDb);
+    statesMaster = initDurableCollection('statesMaster', statesMaster, pilotDb);
+    citiesMaster = initDurableCollection('citiesMaster', citiesMaster, pilotDb);
+    timezonesMaster = initDurableCollection('timezonesMaster', timezonesMaster, pilotDb);
+    languagesMaster = initDurableCollection('languagesMaster', languagesMaster, pilotDb);
+    fiscalCalendarsMaster = initDurableCollection('fiscalCalendarsMaster', fiscalCalendarsMaster, pilotDb);
+    colors = initDurableCollection('colors', colors, pilotDb);
+    sizes = initDurableCollection('sizes', sizes, pilotDb);
+    paymentMethods = initDurableCollection('paymentMethods', paymentMethods, pilotDb);
+    banks = initDurableCollection('banks', banks, pilotDb);
+    countries = initDurableCollection('countries', countries, pilotDb);
+    cities = initDurableCollection('cities', cities, pilotDb);
+    regions = initDurableCollection('regions', regions, pilotDb);
+    assets = initDurableCollection('assets', assets, pilotDb);
+
+    // Financial Event Mapping & Accounting Integration
+    eventMappingRules = initDurableCollection('eventMappingRules', eventMappingRules, pilotDb);
+    journalTemplates = initDurableCollection('journalTemplates', journalTemplates, pilotDb);
+    postingProfiles = initDurableCollection('postingProfiles', postingProfiles, pilotDb);
+    financialQueue = initDurableCollection('financialQueue', financialQueue, pilotDb);
+
+    // Procurement Master & Organizational Structures
+    procurementPaymentTerms = initDurableCollection('procurementPaymentTerms', procurementPaymentTerms, pilotDb);
+    incoterms = initDurableCollection('incoterms', incoterms, pilotDb);
+    procurementCategories = initDurableCollection('procurementCategories', procurementCategories, pilotDb);
+    buyerGroups = initDurableCollection('buyerGroups', buyerGroups, pilotDb);
+    purchasingOrgs = initDurableCollection('purchasingOrgs', purchasingOrgs, pilotDb);
+
+    // Fixed Assets Events & Periodic Snapshots
+    fixedAssetEvents = initDurableCollection('fixedAssetEvents', fixedAssetEvents, pilotDb);
+    fixedAssetSnapshots = initDurableCollection('fixedAssetSnapshots', fixedAssetSnapshots, pilotDb);
+
+    // Treasury Events, Liquidity Forecasts & Periodic Snapshots
+    treasuryEvents = initDurableCollection('treasuryEvents', treasuryEvents, pilotDb);
+    treasuryForecastItems = initDurableCollection('treasuryForecastItems', treasuryForecastItems, pilotDb);
+    treasuryRevaluations = initDurableCollection('treasuryRevaluations', treasuryRevaluations, pilotDb);
+    treasurySnapshots = initDurableCollection('treasurySnapshots', treasurySnapshots, pilotDb);
+
+    // Sales Sequences & Field Sales Mobility
+    salesDocumentSequences = initDurableCollection('salesDocumentSequences', salesDocumentSequences, pilotDb);
+    mobileCustomers = initDurableCollection('mobileCustomers', mobileCustomers, pilotDb);
+    mobileProducts = initDurableCollection('mobileProducts', mobileProducts, pilotDb);
+    salesRepTargets = initDurableCollection('salesRepTargets', salesRepTargets, pilotDb);
+    salesRepActivities = initDurableCollection('salesRepActivities', salesRepActivities, pilotDb);
+
+    // Platform Document Management & Activity Timeline
+    platformAttachments = initDurableCollection('platformAttachments', platformAttachments, pilotDb);
+    platformActivityTimeline = initDurableCollection('platformActivityTimeline', platformActivityTimeline, pilotDb);
+
+    // Restaurant Operations, Table Management & KDS
+    restaurantTables = initDurableCollection('restaurantTables', restaurantTables, pilotDb);
+    kitchenOrders = initDurableCollection('kitchenOrders', kitchenOrders, pilotDb);
+    kitchenWasteRecords = initDurableCollection('kitchenWasteRecords', kitchenWasteRecords, pilotDb);
+
+    // CRM Tickets & Professional Services Timesheets
+    crmTickets = initDurableCollection('crmTickets', crmTickets, pilotDb);
+    projectTimesheets = initDurableCollection('projectTimesheets', projectTimesheets, pilotDb);
+
+    // Universal AttachmentEngine Persistence & Hydration
+    if (pilotDb.isCollectionInitialized('attachmentEngine_attachments')) {
+      const atts = pilotDb.loadCollection<any>('attachmentEngine_attachments');
+      AttachmentEngine.hydrate(atts);
+    } else {
+      const seed = AttachmentEngine.exportState();
+      if (seed.length > 0) {
+        pilotDb.saveCollection('attachmentEngine_attachments', seed as any);
+      }
+    }
+    AttachmentEngine.setMutationListener((att) => {
+      try {
+        pilotDb.saveEntity('attachmentEngine_attachments', att);
+      } catch (e) {
+        console.error('[AttachmentEnginePersistence] Failed persisting attachment:', e);
+      }
+    });
+
+    // Universal CommentEngine Persistence & Hydration
+    if (pilotDb.isCollectionInitialized('commentEngine_comments')) {
+      const cmts = pilotDb.loadCollection<DocumentComment>('commentEngine_comments');
+      const acts = pilotDb.isCollectionInitialized('commentEngine_activityLogs')
+        ? pilotDb.loadCollection<ActivityLog>('commentEngine_activityLogs')
+        : [];
+      CommentEngine.hydrate(cmts, acts);
+    } else {
+      const seed = CommentEngine.exportState();
+      if (seed.comments.length > 0) {
+        pilotDb.saveCollection('commentEngine_comments', seed.comments as any);
+      }
+      if (seed.activities.length > 0) {
+        pilotDb.saveCollection('commentEngine_activityLogs', seed.activities as any);
+      }
+    }
+    CommentEngine.setCommentMutationListener((cmt) => {
+      try {
+        pilotDb.saveEntity('commentEngine_comments', cmt);
+      } catch (e) {
+        console.error('[CommentEnginePersistence] Failed persisting comment:', e);
+      }
+    });
+    CommentEngine.setActivityMutationListener((act) => {
+      try {
+        pilotDb.saveEntity('commentEngine_activityLogs', act);
+      } catch (e) {
+        console.error('[CommentEnginePersistence] Failed persisting activity:', e);
+      }
+    });
+
+    // Mock Data Decoupling: Register live vendor provider
+    SupplierInvitationEngine.setLiveVendorProvider(() => vendors);
+    SupplierQuotationEngine.setLiveVendorProvider(() => vendors);
+
+    console.log(`[PilotPersistence] All durable collections and master data bound to SQLite System of Record.`);
   } catch (err) {
     console.error('Warning initializing pilot persistence:', err);
   }
@@ -1502,17 +2056,29 @@ function initializePilotPersistence(): void {
 
 initializePilotPersistence();
 
-// Helper: Auto Document Number Generator
+// Helper: Auto Document Number Generator (Durable & Deterministic)
 function generateDocumentNumber(tenantId: string, entityType: 'JE' | 'INV' | 'PO' | 'PI' | 'SO' | 'GRN' | 'SM' | 'CP' | 'SP' | 'EXP'): string {
-  const rule = numberingRules.find(r => r.tenantId === tenantId && r.entityType === entityType);
+  let rule = numberingRules.find(r => r.tenantId === tenantId && r.entityType === entityType);
   if (!rule) {
-    return `${entityType}-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newRule: DocumentNumberingRule = {
+      id: `nr-${tenantId}-${entityType.toLowerCase()}`,
+      tenantId,
+      entityType,
+      prefix: `${entityType}-2026-`,
+      nextNumber: 1,
+      zeroPad: 4,
+      yearPrefix: true,
+      lastGeneratedFormat: ''
+    };
+    numberingRules.push(newRule);
+    rule = newRule;
   }
   const currentNum = rule.nextNumber;
   rule.nextNumber += 1;
   const padded = String(currentNum).padStart(rule.zeroPad, '0');
   const formatted = `${rule.prefix}${padded}`;
   rule.lastGeneratedFormat = formatted;
+  persistEntity('numberingRules', rule, pilotDb);
   return formatted;
 }
 
@@ -1543,6 +2109,9 @@ function recordAudit(
     details
   };
   auditLogs.unshift(log);
+  try {
+    pilotDb.logAudit(action, log, tenantId);
+  } catch {}
   return log;
 }
 
@@ -1825,13 +2394,228 @@ async function startServer() {
 
   // ==================== API V1 ROUTES ====================
 
+  // Auth Context Extraction Middleware (authoritative server-side Bearer token)
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    const token = SecurityEngine.extractBearerToken(req);
+    if (token) {
+      try {
+        const payload = SecurityEngine.verifyToken(token);
+        const user = users.find(u => u.id === payload.sub);
+        if (user && user.active) {
+          (req as any).auth = payload;
+          (req as any).user = SecurityEngine.sanitizeUser(user);
+        }
+      } catch {
+        // Invalid or expired token: auth remains undefined
+      }
+    }
+    next();
+  });
+
   // Auth / Me
   app.get('/api/v1/auth/me', (req: Request, res: Response) => {
-    res.json({
-      user: users[0],
-      tenant: tenants[0],
-      company: companies[0]
+    let activeUser = (req as any).user ? users.find(u => u.id === (req as any).user.id) : users[0];
+    if (!activeUser) activeUser = users[0];
+
+    const token = SecurityEngine.generateToken({
+      sub: activeUser.id,
+      tenantId: activeUser.tenantId,
+      companyId: activeUser.companyId,
+      role: activeUser.role,
+      email: activeUser.email,
+      name: activeUser.name,
+      permissions: activeUser.permissions
     });
+
+    const userTenant = tenants.find(t => t.id === activeUser.tenantId) || tenants[0];
+    const userCompany = companies.find(c => c.id === activeUser.companyId) || companies[0];
+
+    res.json({
+      user: SecurityEngine.sanitizeUser(activeUser),
+      tenant: userTenant,
+      company: userCompany,
+      token
+    });
+  });
+
+  // ==========================================================================
+  // P0-08 TENANT IDENTITY & WHITE-LABEL BRANDING API
+  // ==========================================================================
+
+  app.get('/api/v1/branding', (req: Request, res: Response) => {
+    try {
+      const authUser = (req as any).user;
+      const queryTenant = req.query.tenantId as string;
+      const queryCompany = req.query.companyId as string;
+
+      let targetTenantId = authUser?.tenantId || queryTenant || 'ten-001';
+      if (authUser && authUser.role === 'Super Admin' && queryTenant) {
+        targetTenantId = queryTenant;
+      }
+
+      const branding = BrandingEngine.getInstance().getBranding(targetTenantId, queryCompany);
+      res.json({ success: true, branding });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/v1/branding/public/:tenantId', (req: Request, res: Response) => {
+    try {
+      const { tenantId } = req.params;
+      const metadata = BrandingEngine.getInstance().getPublicBranding(tenantId);
+      res.json({ success: true, branding: metadata });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/v1/branding/platform', (req: Request, res: Response) => {
+    try {
+      const engine = BrandingEngine.getInstance();
+      res.json({
+        success: true,
+        platformIdentity: engine.getCanonicalPlatformIdentity(),
+        platformBranding: engine.getPlatformBranding()
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/v1/branding', (req: Request, res: Response) => {
+    const authUser = (req as any).user;
+    if (!authUser) {
+      return res.status(401).json({ error: 'Authentication required. Missing or invalid Bearer token.' });
+    }
+
+    if (authUser.role !== 'Tenant Admin' && authUser.role !== 'Super Admin') {
+      return res.status(403).json({
+        error: `Forbidden: Role '${authUser.role}' is not authorized to configure enterprise branding.`
+      });
+    }
+
+    let targetTenantId = authUser.tenantId;
+    if (authUser.role === 'Super Admin' && req.body.tenantId) {
+      targetTenantId = req.body.tenantId;
+    } else if (req.body.tenantId && req.body.tenantId !== authUser.tenantId) {
+      return res.status(403).json({
+        error: 'Forbidden: Anti-IDOR Violation. Cannot mutate branding for a different tenant.'
+      });
+    }
+
+    try {
+      const result = BrandingEngine.getInstance().saveBranding(
+        targetTenantId,
+        req.body,
+        authUser.id,
+        authUser.role,
+        req.body.companyId
+      );
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/v1/branding/reset', (req: Request, res: Response) => {
+    const authUser = (req as any).user;
+    if (!authUser) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
+
+    if (authUser.role !== 'Tenant Admin' && authUser.role !== 'Super Admin') {
+      return res.status(403).json({
+        error: `Forbidden: Role '${authUser.role}' is not authorized to reset branding.`
+      });
+    }
+
+    let targetTenantId = authUser.tenantId;
+    if (authUser.role === 'Super Admin' && req.body.tenantId) {
+      targetTenantId = req.body.tenantId;
+    } else if (req.body.tenantId && req.body.tenantId !== authUser.tenantId) {
+      return res.status(403).json({
+        error: 'Forbidden: Cannot reset branding for another tenant.'
+      });
+    }
+
+    try {
+      const result = BrandingEngine.getInstance().resetToDefaults(
+        targetTenantId,
+        authUser.id,
+        authUser.role,
+        req.body.companyId
+      );
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/v1/branding/preview', (req: Request, res: Response) => {
+    try {
+      const authUser = (req as any).user;
+      const targetTenantId = authUser?.tenantId || req.body.tenantId || 'ten-001';
+      const report = BrandingEngine.getInstance().validateBranding(req.body, targetTenantId);
+      res.json(report);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/v1/branding/assets', (req: Request, res: Response) => {
+    const authUser = (req as any).user;
+    if (!authUser) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
+
+    if (authUser.role !== 'Tenant Admin' && authUser.role !== 'Super Admin') {
+      return res.status(403).json({
+        error: `Forbidden: Role '${authUser.role}' is not authorized to upload branding assets.`
+      });
+    }
+
+    const { assetType, fileName, mimeType, fileDataBase64, tenantId } = req.body;
+    if (!assetType || !fileName || !mimeType || !fileDataBase64) {
+      return res.status(400).json({ error: 'Missing required asset upload parameters.' });
+    }
+
+    let targetTenantId = authUser.tenantId;
+    if (authUser.role === 'Super Admin' && tenantId) {
+      targetTenantId = tenantId;
+    } else if (tenantId && tenantId !== authUser.tenantId) {
+      return res.status(403).json({ error: 'Forbidden: Cannot upload assets for another tenant.' });
+    }
+
+    try {
+      const cleanBase64 = String(fileDataBase64).replace(/^data:[a-zA-Z0-9/+-]+;base64,/, '');
+      const buffer = Buffer.from(cleanBase64, 'base64');
+      const asset = BrandingEngine.getInstance().saveAsset(
+        targetTenantId,
+        assetType,
+        buffer,
+        fileName,
+        mimeType,
+        authUser.id
+      );
+      res.status(201).json({ success: true, asset });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/v1/branding/assets/:tenantId/:fileName', (req: Request, res: Response) => {
+    const { tenantId, fileName } = req.params;
+    const asset = BrandingEngine.getInstance().getAssetFile(tenantId, fileName);
+    if (!asset) {
+      return res.status(404).json({ error: 'Asset not found.' });
+    }
+
+    res.setHeader('Content-Type', asset.mimeType);
+    res.setHeader('Content-Security-Policy', "default-src 'none'");
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(asset.buffer);
   });
 
   // Core Platform - Tenants & Companies
@@ -1977,24 +2761,250 @@ async function startServer() {
   });
 
   app.get('/api/v1/users', (req: Request, res: Response) => {
-    res.json(users);
+    res.json(users.map(u => SecurityEngine.sanitizeUser(u)));
   });
 
-  // Posting Rules Management
+  app.post('/api/v1/users', (req: Request, res: Response) => {
+    const auth = (req as any).auth;
+    if (auth && auth.role !== 'Super Admin' && auth.role !== 'Tenant Admin') {
+      return res.status(403).json({ error: 'Forbidden: Insufficient privileges to create users.' });
+    }
+
+    const { name, email, role, password, pin, tenantId, companyId } = req.body;
+    if (!name || !email || !role || !password) {
+      return res.status(400).json({ error: 'Name, email, role, and password are required.' });
+    }
+
+    const pwdCheck = SecurityEngine.validatePassword(password);
+    if (!pwdCheck.valid) {
+      return res.status(400).json({ error: pwdCheck.error });
+    }
+
+    let pinHash: string | undefined;
+    if (pin) {
+      const pinCheck = SecurityEngine.validatePin(pin);
+      if (!pinCheck.valid) {
+        return res.status(400).json({ error: pinCheck.error });
+      }
+      pinHash = SecurityEngine.hashPin(pin);
+    }
+
+    const newUser: User = {
+      id: `usr-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      tenantId: tenantId || auth?.tenantId || 'ten-001',
+      companyId: companyId || auth?.companyId || 'comp-001',
+      name,
+      email,
+      role,
+      passwordHash: SecurityEngine.hashPassword(password),
+      pinHash,
+      active: true,
+      permissions: [],
+      createdAt: new Date().toISOString()
+    };
+
+    users.push(newUser);
+    persistEntity('users', newUser, pilotDb);
+    recordAudit(newUser.tenantId, auth?.sub || 'admin', auth?.name || 'Admin', auth?.role || 'Super Admin', 'CREATE', 'User', newUser.id, `Created user account for ${email}`);
+
+    res.status(201).json(SecurityEngine.sanitizeUser(newUser));
+  });
+
+  // Enterprise Security & Authentication Engine Endpoints
+  app.post('/api/v1/auth/login', (req: Request, res: Response) => {
+    const { email, password } = req.body;
+    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const rateLimitKey = `login:${email ? email.trim().toLowerCase() : clientIp}`;
+
+    const rateCheck = SecurityEngine.checkRateLimit(rateLimitKey);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: rateCheck.error,
+        retryAfterMs: rateCheck.retryAfterMs,
+        retryAfterSec: rateCheck.retryAfterSec
+      });
+    }
+
+    if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+      SecurityEngine.recordFailure(rateLimitKey);
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    const user = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+    if (!user || !user.active) {
+      SecurityEngine.recordFailure(rateLimitKey);
+      SecurityEngine.verifyPassword(password, '$pbkdf2$100000$dummy$dummy'); // Constant timing
+      return res.status(401).json({ error: 'Invalid credentials.' });
+    }
+
+    const isValid = SecurityEngine.verifyPassword(password, user.passwordHash);
+    if (!isValid) {
+      const failStatus = SecurityEngine.recordFailure(rateLimitKey, 5, 15 * 60 * 1000, user.tenantId, user.companyId);
+      recordAudit(user.tenantId, user.id, user.name, user.role, 'LOGIN', 'User', user.id, `Failed password login attempt for ${email}`);
+      if (!failStatus.allowed) {
+        return res.status(429).json({
+          error: failStatus.error,
+          retryAfterMs: failStatus.retryAfterMs,
+          retryAfterSec: failStatus.retryAfterSec
+        });
+      }
+      return res.status(401).json({ error: 'Invalid credentials.' });
+    }
+
+    SecurityEngine.resetAttempts(rateLimitKey);
+    const token = SecurityEngine.generateToken({
+      sub: user.id,
+      tenantId: user.tenantId,
+      companyId: user.companyId,
+      role: user.role,
+      email: user.email,
+      name: user.name,
+      permissions: user.permissions
+    });
+    recordAudit(user.tenantId, user.id, user.name, user.role, 'LOGIN', 'User', user.id, `Successful user login: ${email}`);
+
+    res.json({
+      success: true,
+      user: SecurityEngine.sanitizeUser(user),
+      token
+    });
+  });
+
+  app.post('/api/v1/auth/verify-pin', (req: Request, res: Response) => {
+    const { userId, pin } = req.body;
+    const rateLimitKey = `pin:${userId || 'unknown'}`;
+
+    const rateCheck = SecurityEngine.checkRateLimit(rateLimitKey);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: rateCheck.error,
+        retryAfterMs: rateCheck.retryAfterMs,
+        retryAfterSec: rateCheck.retryAfterSec
+      });
+    }
+
+    if (!userId || !pin || typeof pin !== 'string') {
+      SecurityEngine.recordFailure(rateLimitKey);
+      return res.status(400).json({ error: 'UserId and PIN are required.' });
+    }
+
+    const user = users.find(u => u.id === userId);
+    if (!user || !user.active) {
+      SecurityEngine.recordFailure(rateLimitKey);
+      SecurityEngine.verifyPin(pin, '$pin$100000$dummy$dummy');
+      return res.status(401).json({ error: 'Invalid cashier credentials.' });
+    }
+
+    const isValid = SecurityEngine.verifyPin(pin, user.pinHash);
+    if (!isValid) {
+      const failStatus = SecurityEngine.recordFailure(rateLimitKey, 5, 15 * 60 * 1000, user.tenantId, user.companyId);
+      recordAudit(user.tenantId, user.id, user.name, user.role, 'LOGIN', 'User', user.id, `Failed PIN verification attempt for cashier ${user.name}`);
+      if (!failStatus.allowed) {
+        return res.status(429).json({
+          error: failStatus.error,
+          retryAfterMs: failStatus.retryAfterMs,
+          retryAfterSec: failStatus.retryAfterSec
+        });
+      }
+      return res.status(401).json({ error: 'Invalid cashier PIN.' });
+    }
+
+    SecurityEngine.resetAttempts(rateLimitKey);
+    const token = SecurityEngine.generateToken({
+      sub: user.id,
+      tenantId: user.tenantId,
+      companyId: user.companyId,
+      role: user.role,
+      name: user.name,
+      email: user.email,
+      type: 'pos_session'
+    });
+
+    recordAudit(user.tenantId, user.id, user.name, user.role, 'LOGIN', 'User', user.id, `Successful POS cashier PIN verification for ${user.name}`);
+
+    res.json({
+      success: true,
+      cashier: SecurityEngine.sanitizeUser(user),
+      authorized: true,
+      token
+    });
+  });
+
+  app.post('/api/v1/auth/change-password', (req: Request, res: Response) => {
+    const { userId, currentPassword, newPassword } = req.body;
+    if (!userId || !currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'UserId, currentPassword, and newPassword are required.' });
+    }
+
+    const user = users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    const isValid = SecurityEngine.verifyPassword(currentPassword, user.passwordHash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Current password is incorrect.' });
+    }
+
+    const policyCheck = SecurityEngine.validatePassword(newPassword);
+    if (!policyCheck.valid) {
+      return res.status(400).json({ error: policyCheck.error });
+    }
+
+    user.passwordHash = SecurityEngine.hashPassword(newPassword);
+    persistEntity('users', user, pilotDb);
+    recordAudit(user.tenantId, user.id, user.name, user.role, 'UPDATE', 'User', user.id, `Password changed successfully for ${user.email}`);
+
+    res.json({ success: true, message: 'Password updated successfully.' });
+  });
+
+  app.post('/api/v1/auth/change-pin', (req: Request, res: Response) => {
+    const { userId, currentPin, newPin } = req.body;
+    if (!userId || !currentPin || !newPin) {
+      return res.status(400).json({ error: 'UserId, currentPin, and newPin are required.' });
+    }
+
+    const user = users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    const isValid = SecurityEngine.verifyPin(currentPin, user.pinHash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Current PIN is incorrect.' });
+    }
+
+    const policyCheck = SecurityEngine.validatePin(newPin);
+    if (!policyCheck.valid) {
+      return res.status(400).json({ error: policyCheck.error });
+    }
+
+    user.pinHash = SecurityEngine.hashPin(newPin);
+    persistEntity('users', user, pilotDb);
+    recordAudit(user.tenantId, user.id, user.name, user.role, 'UPDATE', 'User', user.id, `Cashier PIN changed successfully for ${user.name}`);
+
+    res.json({ success: true, message: 'Cashier PIN updated successfully.' });
+  });
+
+  // Posting Rules Management (Configuration - Admin & Accounting Only)
   app.get('/api/v1/master/posting-rules', (req: Request, res: Response) => {
+    const auth = (req as any).auth;
+    if (auth && (auth.role === 'Cashier' || auth.role === 'Warehouse Worker')) {
+      return res.status(403).json({ error: `Forbidden: Role '${auth.role}' is not authorized to inspect system posting rules.` });
+    }
     res.json(postingRules);
   });
 
   app.post('/api/v1/master/posting-rules', (req: Request, res: Response) => {
+    const auth = (req as any).auth;
+    if (auth && auth.role !== 'Super Admin' && auth.role !== 'Tenant Admin' && auth.role !== 'Chief Accountant') {
+      return res.status(403).json({ error: `Forbidden: Role '${auth.role}' is not authorized to configure posting rules.` });
+    }
     const newRule: PostingRule = {
       id: `pr-${Date.now()}`,
-      tenantId: 'ten-001',
-      companyId: 'comp-001',
+      tenantId: auth?.tenantId || 'ten-001',
+      companyId: auth?.companyId || 'comp-001',
       isActive: true,
       ...req.body
     };
     postingRules.push(newRule);
-    recordAudit('ten-001', 'usr-001', 'Ahmed Mounir', 'Super Admin', 'CREATE', 'PostingRule', newRule.id, `Created Posting Rule ${newRule.name} for ${newRule.documentType}`);
+    recordAudit(newRule.tenantId, auth?.sub || 'usr-001', auth?.name || 'Ahmed Mounir', auth?.role || 'Super Admin', 'CREATE', 'PostingRule', newRule.id, `Created Posting Rule ${newRule.name} for ${newRule.documentType}`);
     res.status(201).json(newRule);
   });
 
@@ -2110,13 +3120,31 @@ async function startServer() {
 
   // Tax Engine Calculation Endpoint
   app.post('/api/v1/taxes/calculate', (req: Request, res: Response) => {
-    const { items, defaultTaxCode, withholdingRate } = req.body;
+    const { items, defaultTaxCode, withholdingRate, context } = req.body;
     const result = TaxEngine.calculateDocumentTaxes(
       items || [],
       taxRules,
-      defaultTaxCode || 'VAT15',
-      Number(withholdingRate || 0)
+      defaultTaxCode,
+      Number(withholdingRate || 0),
+      context
     );
+    res.json(result);
+  });
+
+  // Tax Engine Dynamic Resolution Endpoint
+  app.get('/api/v1/taxes/resolve', (req: Request, res: Response) => {
+    const { tenantId, companyId, branchId, country, taxCategory, taxCode, date, customerTaxExempt, supplierTaxExempt } = req.query;
+    const result = TaxEngine.resolveTaxRate({
+      tenantId: tenantId ? String(tenantId) : undefined,
+      companyId: companyId ? String(companyId) : undefined,
+      branchId: branchId ? String(branchId) : undefined,
+      countryOrJurisdiction: country ? String(country) : undefined,
+      taxCategory: taxCategory ? String(taxCategory) : undefined,
+      taxCode: taxCode ? String(taxCode) : undefined,
+      transactionDate: date ? String(date) : undefined,
+      customerTaxExempt: customerTaxExempt === 'true',
+      supplierTaxExempt: supplierTaxExempt === 'true'
+    });
     res.json(result);
   });
 
@@ -2619,21 +3647,37 @@ async function startServer() {
     res.json({ message: `Successfully ${action}D approval request`, request: appReq });
   });
 
-  // Audit Logs
+  // Audit Logs (Protected - Administrators & Auditors Only)
   app.get('/api/v1/audit/logs', (req: Request, res: Response) => {
+    const auth = (req as any).auth;
+    if (!auth) {
+      return res.status(401).json({ error: 'Authentication required to inspect security audit trail.' });
+    }
+    const authorizedRoles = ['Super Admin', 'Tenant Admin', 'Internal Auditor', 'Financial Auditor'];
+    if (!authorizedRoles.includes(auth.role)) {
+      return res.status(403).json({ error: `Forbidden: Role '${auth.role}' is not authorized to inspect security audit logs.` });
+    }
     res.json(auditLogs);
   });
 
   // Accounting - Chart of Accounts
   app.get('/api/v1/accounting/coa', (req: Request, res: Response) => {
+    const auth = (req as any).auth;
+    if (auth && (auth.role === 'Cashier' || auth.role === 'Warehouse Worker')) {
+      return res.status(403).json({ error: `Forbidden: Role '${auth.role}' is not authorized to inspect the chart of accounts.` });
+    }
     res.json(accounts);
   });
 
   app.post('/api/v1/accounting/coa', (req: Request, res: Response) => {
+    const auth = (req as any).auth;
+    if (auth && auth.role !== 'Super Admin' && auth.role !== 'Tenant Admin' && auth.role !== 'Chief Accountant') {
+      return res.status(403).json({ error: `Forbidden: Role '${auth.role}' is not authorized to create chart of account codes.` });
+    }
     const newAcc = {
       id: `acc-${Date.now()}`,
-      tenantId: 'ten-001',
-      companyId: 'comp-001',
+      tenantId: auth?.tenantId || 'ten-001',
+      companyId: auth?.companyId || 'comp-001',
       balance: 0,
       currency: 'SAR',
       isActive: true,
@@ -2641,17 +3685,37 @@ async function startServer() {
       ...req.body
     };
     accounts.push(newAcc);
-    recordAudit('ten-001', 'usr-001', 'Ahmed Mounir', 'Super Admin', 'CREATE', 'Account', newAcc.id, `Created GL Account ${newAcc.code} - ${newAcc.name}`);
+    recordAudit(newAcc.tenantId, auth?.sub || 'usr-001', auth?.name || 'Ahmed Mounir', auth?.role || 'Super Admin', 'CREATE', 'Account', newAcc.id, `Created GL Account ${newAcc.code} - ${newAcc.name}`);
     res.status(201).json(newAcc);
   });
 
   // Accounting - Journal Entries Ledger
   app.get('/api/v1/accounting/journals', (req: Request, res: Response) => {
+    const auth = (req as any).auth;
+    if (auth) {
+      if (auth.role === 'Cashier' || auth.role === 'Warehouse Worker' || auth.role === 'Assembly Operator') {
+        return res.status(403).json({ error: `Forbidden: Role '${auth.role}' is not authorized to access general ledger journals.` });
+      }
+      if (auth.role !== 'Super Admin') {
+        const filtered = journalEntries.filter(j => j.companyId === auth.companyId && j.tenantId === auth.tenantId);
+        return res.json(filtered);
+      }
+    }
     res.json(journalEntries);
   });
 
   // Manual Adjusting Journal Entry Endpoint (Restricted ONLY to Opening, Closing, Adjusting, Auditor, Correction)
   app.post('/api/v1/accounting/journals', (req: Request, res: Response) => {
+    const auth = (req as any).auth;
+    if (auth) {
+      if (auth.role === 'Cashier' || auth.role === 'Warehouse Worker') {
+        return res.status(403).json({ error: `Forbidden: Role '${auth.role}' is not authorized to post journal entries.` });
+      }
+      if (req.body.companyId && req.body.companyId !== auth.companyId && auth.role !== 'Super Admin') {
+        return res.status(403).json({ error: `Cross-company security violation: Cannot post journal entries for company '${req.body.companyId}'.` });
+      }
+    }
+
     const { date, postingDate, reference, description, lines, createdBy, createdByName, entryType } = req.body;
 
     const validManualTypes = ['OPENING', 'CLOSING', 'ADJUSTING', 'AUDITOR', 'CORRECTION'];
@@ -2847,7 +3911,10 @@ async function startServer() {
     const item = inventory.find(i => i.id === id);
     if (!item) return res.status(404).json({ error: 'Item not found' });
 
-    inventory = inventory.filter(i => i.id !== id);
+    const idx = inventory.findIndex(i => i.id === id);
+    if (idx !== -1) {
+      inventory.splice(idx, 1);
+    }
     recordAudit('ten-001', 'usr-001', 'Ahmed Mounir', 'Inventory Manager', 'DELETE', 'InventoryItem', id, `Deleted Item Master: ${item.name} (${item.sku})`);
     res.json({ message: 'Item deleted successfully' });
   });
@@ -3896,13 +4963,23 @@ async function startServer() {
 
     const formattedLines = lines.map((l: any) => {
       const lineTotal = l.quantity * l.unitPrice * (1 - (l.discount || 0) / 100);
-      const lineTax = lineTotal * (l.taxRate || 0.15);
+      const resolvedRate = l.taxRate !== undefined
+        ? l.taxRate
+        : TaxEngine.resolveTaxRate({
+            tenantId,
+            companyId: 'comp-001',
+            countryOrJurisdiction: 'SA',
+            taxCategory: l.taxCategory,
+            taxCode: l.taxCode
+          }).taxRate;
+      const lineTax = Math.round(lineTotal * resolvedRate * 100) / 100;
       subtotal += lineTotal;
       taxTotal += lineTax;
       return {
         ...l,
+        taxRate: resolvedRate,
         taxAmount: lineTax,
-        total: lineTotal + lineTax
+        total: Math.round((lineTotal + lineTax) * 100) / 100
       };
     });
 
@@ -5729,7 +6806,7 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
         'CustomerSalesInvoice',
         invoice.id,
         invoice.invoiceNumber,
-        invoice.subtotal,
+        invoice.grandTotal,
         invoice.taxTotal,
         invoice.currency,
         invoice.customerId,
@@ -5782,7 +6859,7 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
         type || 'PRICE_ADJUSTMENT',
         reason || 'Customer Commercial Adjustment',
         Number(subtotal),
-        taxRate !== undefined ? Number(taxRate) : 0.15,
+        taxRate !== undefined ? Number(taxRate) : TaxEngine.resolveTaxRate({ tenantId: customer.tenantId, companyId: customer.companyId, countryOrJurisdiction: 'SA' }).taxRate,
         invoiceId,
         invoiceNumber,
         'usr-001'
@@ -5802,7 +6879,7 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
         'CustomerCreditNote',
         creditNote.id,
         creditNote.creditNoteNumber,
-        creditNote.subtotal,
+        creditNote.grandTotal,
         creditNote.taxTotal,
         'SAR',
         creditNote.customerId,
@@ -6418,7 +7495,10 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
       });
     }
 
-    glJournals = glJournals.filter(j => j.id !== journal.id);
+    const idx = glJournals.findIndex(j => j.id === journal.id);
+    if (idx !== -1) {
+      glJournals.splice(idx, 1);
+    }
     res.json({ message: `Draft journal ${journal.entryNumber} deleted.` });
   });
 
@@ -7216,6 +8296,7 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
       });
 
       postedDepreciationPeriods.add(periodKey);
+      pilotDb.saveEntity('postedDepreciationPeriods', { id: periodKey, periodKey, postedAt: new Date().toISOString() }, 'ten-001', companyId);
 
       // Record in audit vault
       const depAuditLog: AssetAuditLogRecord = {
@@ -8520,7 +9601,9 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
         bankAccount,
         chargeType: req.body.chargeType,
         amount: Number(req.body.amount),
-        vatRate: Number(req.body.vatRate ?? 0.15),
+        vatRate: req.body.vatRate !== undefined
+          ? Number(req.body.vatRate)
+          : TaxEngine.resolveTaxRate({ companyId: bankAccount.companyId, countryOrJurisdiction: bankAccount.currency === 'EGP' ? 'EG' : 'SA' }).taxRate,
         currency: req.body.currency || bankAccount.currency,
         chargeDate: req.body.chargeDate || new Date().toISOString().split('T')[0],
         referenceNumber: req.body.referenceNumber || `BC-${Date.now()}`,
@@ -9048,82 +10131,6 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
           message: 'ZATCA Phase 2 clearance batch completed with 100% cryptographic token conformity.'
         }
       ]
-    }
-  ];
-
-  const platformAttachments: DocumentAttachment[] = [
-    {
-      id: 'ATT-001',
-      entityType: 'TREASURY_TRANSACTION',
-      entityId: 'tr-001',
-      entityNumber: 'TR-2026-TRF-00001',
-      fileName: 'Bank_Swift_Advice_Riyad_001.pdf',
-      fileSize: 482100,
-      fileSizeBytesFormatted: '470.80 KB',
-      mimeType: 'application/pdf',
-      category: 'RECEIPT',
-      version: 1,
-      isLatest: true,
-      downloadUrl: '/api/v1/platform/attachments/ATT-001/download',
-      uploadedBy: 'usr-001',
-      uploadedByName: 'Ahmed Al-Mansoor',
-      uploadedAt: '2026-08-14T09:15:00.000Z',
-      sha256Checksum: PlatformEngine.computeSha256('ATT-001:Bank_Swift_Advice_Riyad_001.pdf'),
-      isVerified: true,
-      description: 'Official Bank SWIFT MT103 confirmation advice for supplier transfer'
-    },
-    {
-      id: 'ATT-002',
-      entityType: 'FIXED_ASSET',
-      entityId: 'fa-001',
-      entityNumber: 'FA-2026-MACH-0001',
-      fileName: 'CNC_Machine_Purchase_Contract_Warranty.pdf',
-      fileSize: 1850400,
-      fileSizeBytesFormatted: '1.76 MB',
-      mimeType: 'application/pdf',
-      category: 'CONTRACT',
-      version: 1,
-      isLatest: true,
-      downloadUrl: '/api/v1/platform/attachments/ATT-002/download',
-      uploadedBy: 'usr-002',
-      uploadedByName: 'Sarah Jenkins',
-      uploadedAt: '2026-08-14T10:00:00.000Z',
-      sha256Checksum: PlatformEngine.computeSha256('ATT-002:CNC_Machine_Purchase_Contract_Warranty.pdf'),
-      isVerified: true,
-      description: '5-Year Manufacturer Warranty and OEM Calibration Certificate'
-    }
-  ];
-
-  const platformActivityTimeline: ActivityTimelineEvent[] = [
-    {
-      id: 'ACT-001',
-      entityType: 'TREASURY_TRANSACTION',
-      entityId: 'tr-001',
-      entityNumber: 'TR-2026-TRF-00001',
-      action: 'CREATED',
-      performedByUserId: 'usr-001',
-      performedByName: 'Ahmed Al-Mansoor',
-      performedByRole: 'TREASURY_OFFICER',
-      timestamp: '2026-08-14T09:00:00.000Z',
-      correlationId: 'CORR-TR-001',
-      summaryEn: 'Initiated Supplier Disbursement Transfer of 150,000 SAR',
-      summaryAr: 'إنشاء أمر صرف مالي للمورد بمبلغ 150,000 ريال',
-      sha256Hash: PlatformEngine.computeSha256('ACT-001:INITIATE_TRANSFER')
-    },
-    {
-      id: 'ACT-002',
-      entityType: 'WORKFLOW_INSTANCE',
-      entityId: 'WFI-2026-001',
-      entityNumber: 'PO-2026-00042',
-      action: 'APPROVED',
-      performedByUserId: 'usr-001',
-      performedByName: 'Ahmed Al-Mansoor',
-      performedByRole: 'PROCUREMENT_SPECIALIST',
-      timestamp: '2026-08-14T10:15:00.000Z',
-      correlationId: 'CORR-WF-001',
-      summaryEn: 'Approved Step 1 (Procurement Review) for PO-2026-00042',
-      summaryAr: 'اعتماد المرحلة الأولى لأمر الشراء PO-2026-00042',
-      sha256Hash: PlatformEngine.computeSha256('ACT-002:APPROVE_STEP_1')
     }
   ];
 
@@ -9987,8 +10994,19 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     const register = posRegisters.find(r => r.id === registerId);
     if (!register) return res.status(404).json({ success: false, error: 'Register not found' });
 
+    const auth = (req as any).auth;
+    if (auth) {
+      const allowedRoles = ['Cashier', 'POS Supervisor', 'Store Manager', 'Super Admin', 'Tenant Admin'];
+      if (!allowedRoles.includes(auth.role)) {
+        return res.status(403).json({ success: false, error: `Forbidden: Role '${auth.role}' is not authorized to open a POS shift.` });
+      }
+      if (auth.role !== 'Super Admin' && register.companyId !== auth.companyId) {
+        return res.status(403).json({ success: false, error: `Cross-company violation: Register belongs to company '${register.companyId}', but user belongs to company '${auth.companyId}'.` });
+      }
+    }
+
     const shiftNum = `SH-${new Date().toISOString().split('T')[0]}-${posShifts.length + 1}`;
-    const cashierData = cashier || { id: 'usr-003', name: 'Omar Al-Ghamdi' };
+    const cashierData = (auth ? { id: auth.sub, name: auth.name } : null) || cashier || { id: 'usr-003', name: 'Omar Al-Ghamdi' };
     const newShift = SalesEngine.openShift(register, cashierData, shiftNum, openingFloat || 1000);
 
     register.currentShiftId = newShift.id;
@@ -10039,6 +11057,17 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     const { registerId, shiftId, cartLines, payments, customer, cashier } = req.body;
     const register = posRegisters.find(r => r.id === registerId) || posRegisters[0];
     const shift = posShifts.find(s => s.id === shiftId) || posShifts[0];
+
+    const auth = (req as any).auth;
+    if (auth) {
+      const allowedRoles = ['Cashier', 'POS Supervisor', 'Store Manager', 'Super Admin', 'Tenant Admin'];
+      if (!allowedRoles.includes(auth.role)) {
+        return res.status(403).json({ success: false, error: `Forbidden: Role '${auth.role}' is not authorized to execute POS checkout.` });
+      }
+      if (auth.role !== 'Super Admin' && register.companyId !== auth.companyId) {
+        return res.status(403).json({ success: false, error: `Cross-company violation: Register belongs to company '${register.companyId}', but user belongs to company '${auth.companyId}'.` });
+      }
+    }
 
     const seqRule = salesDocumentSequences.find(s => s.documentType === 'POS_RECEIPT');
     let rcptNum = `POS-2026-${Math.floor(10000 + Math.random() * 90000)}`;
@@ -10634,6 +11663,192 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     res.json({ success: true, validation: result });
   });
 
+  // Statutory Compliance Orchestration & Official Authority Integration (P0-05)
+  app.get('/api/v1/compliance/readiness', (req: Request, res: Response) => {
+    const complianceEngine = ComplianceEngine.getInstance(pilotDb);
+    const report = complianceEngine.getReadinessReport(req.query.env as any);
+    res.json(report);
+  });
+
+  app.get('/api/v1/compliance/config', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const complianceEngine = ComplianceEngine.getInstance(pilotDb);
+    const profile = complianceEngine.getTaxpayerProfile(authTenant, authCompany);
+    if (!profile) {
+      return res.json({ success: true, profile: null });
+    }
+    // Redact credentials
+    const sanitized = {
+      ...profile,
+      etaClientSecret: profile.etaClientSecret ? '********' : undefined,
+      zatcaCsidSecret: profile.zatcaCsidSecret ? '********' : undefined,
+      zatcaPrivateKeyPem: profile.zatcaPrivateKeyPem ? '********' : undefined
+    };
+    res.json({ success: true, profile: sanitized });
+  });
+
+  app.post('/api/v1/compliance/config', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+
+    // Verify company isolation
+    if (req.body.companyId && req.body.companyId !== authCompany && (req as any).auth?.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'SECURITY_ERROR: Cross-company profile configuration prohibited.' });
+    }
+
+    const complianceEngine = ComplianceEngine.getInstance(pilotDb);
+    complianceEngine.saveTaxpayerProfile({
+      ...req.body,
+      tenantId: authTenant,
+      companyId: authCompany
+    });
+    res.json({ success: true, message: 'Taxpayer profile updated' });
+  });
+
+  app.post('/api/v1/compliance/submit', async (req: Request, res: Response) => {
+    try {
+      const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+      const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+      const actorId = (req as any).auth?.sub || (req as any).user?.id || 'system';
+
+      const complianceEngine = ComplianceEngine.getInstance(pilotDb);
+      const doc = req.body;
+
+      if (doc.companyId && doc.companyId !== authCompany && (req as any).auth?.role !== 'SUPER_ADMIN') {
+        return res.status(403).json({ success: false, error: 'SECURITY_ERROR: Cross-company compliance submission prohibited.' });
+      }
+
+      const canonicalDoc = doc.id && doc.lines
+        ? doc
+        : complianceEngine.buildCanonicalDocument({
+            ...doc,
+            tenantId: authTenant,
+            companyId: authCompany
+          });
+
+      const submission = await complianceEngine.submitComplianceDocument(canonicalDoc, actorId);
+      res.json({ success: true, submission });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/v1/compliance/submissions', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const complianceEngine = ComplianceEngine.getInstance(pilotDb);
+    const submissions = complianceEngine.getSubmissions(authTenant, authCompany);
+    res.json({ success: true, submissions });
+  });
+
+  app.get('/api/v1/compliance/submissions/:id', (req: Request, res: Response) => {
+    try {
+      const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+      const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+      const complianceEngine = ComplianceEngine.getInstance(pilotDb);
+      const submission = complianceEngine.getSubmission(authTenant, authCompany, req.params.id);
+      if (!submission) {
+        return res.status(404).json({ success: false, error: 'Submission not found' });
+      }
+      res.json({ success: true, submission });
+    } catch (err: any) {
+      res.status(403).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/v1/compliance/archive/:submissionId', (req: Request, res: Response) => {
+    try {
+      const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+      const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+      const complianceEngine = ComplianceEngine.getInstance(pilotDb);
+      const archive = complianceEngine.getArchiveRecord(authTenant, authCompany, req.params.submissionId);
+      if (!archive) {
+        return res.status(404).json({ success: false, error: 'Compliance archive record not found' });
+      }
+      res.json({ success: true, archive });
+    } catch (err: any) {
+      res.status(403).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/v1/compliance/reconcile', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const complianceEngine = ComplianceEngine.getInstance(pilotDb);
+
+    // Collect internal invoices from memory or req.body
+    const invoices = Array.isArray(req.body.invoices) ? req.body.invoices : (salesInvoices || []).map(i => ({
+      id: i.id,
+      number: i.invoiceNumber,
+      totalAmount: i.grandTotal,
+      taxAmount: i.taxTotal,
+      date: i.date || i.createdAt
+    }));
+
+    const report = complianceEngine.runReconciliation(authTenant, authCompany, invoices);
+    res.json({ success: true, report });
+  });
+
+  app.post('/api/v1/compliance/submissions/:id/cancel', async (req: Request, res: Response) => {
+    try {
+      const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+      const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+      const actorId = (req as any).auth?.sub || 'system';
+      const { reason } = req.body;
+
+      const complianceEngine = ComplianceEngine.getInstance(pilotDb);
+      const sub = complianceEngine.getSubmission(authTenant, authCompany, req.params.id);
+      if (!sub) {
+        return res.status(404).json({ success: false, error: 'Submission not found' });
+      }
+
+      complianceEngine.updateSubmissionStatus(sub, 'CANCEL_REQUESTED', actorId, reason);
+
+      const profile = complianceEngine.getTaxpayerProfile(authTenant, authCompany);
+      if (sub.jurisdiction === 'EGYPT_ETA' && profile) {
+        const cancelRes = await EgyptianTaxAuthorityAdapter.cancelDocument(sub.documentUuid, reason || 'Statutory cancellation', profile);
+        if (cancelRes.success) {
+          complianceEngine.updateSubmissionStatus(sub, 'CANCELLED', actorId, 'Cancelled at authority');
+        }
+      } else {
+        complianceEngine.updateSubmissionStatus(sub, 'CANCELLED', actorId, 'Cancelled internally');
+      }
+
+      res.json({ success: true, submission: sub });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/v1/compliance/submissions/:id/retry', async (req: Request, res: Response) => {
+    try {
+      const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+      const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+      const actorId = (req as any).auth?.sub || 'system';
+
+      const complianceEngine = ComplianceEngine.getInstance(pilotDb);
+      const submission = await complianceEngine.executeRetry(authTenant, authCompany, req.params.id, actorId);
+      res.json({ success: true, submission });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/v1/compliance/submissions/:id/reconcile', async (req: Request, res: Response) => {
+    try {
+      const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+      const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+      const actorId = (req as any).auth?.sub || 'system';
+
+      const complianceEngine = ComplianceEngine.getInstance(pilotDb);
+      const submission = await complianceEngine.reconcileUnknownOutcome(authTenant, authCompany, req.params.id, actorId);
+      res.json({ success: true, submission });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // 17. Universal Data Export
   app.post('/api/v1/sales/export', (req: Request, res: Response) => {
     const exportResult = UniversalExportEngine.exportDataset(req.body, {
@@ -10654,6 +11869,552 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
   app.get('/api/v1/sales/tests/run', (req: Request, res: Response) => {
     const testReport = Phase31HardeningSuite.runAllHardeningTests();
     res.json({ success: true, report: testReport });
+  });
+
+  // 19. Industry Vertical Runtime Depth (P0-06)
+  app.get('/api/v1/vertical/profiles', (req: Request, res: Response) => {
+    const profiles = VerticalProfileRegistry.getAllProfiles();
+    res.json({ success: true, profiles });
+  });
+
+  app.get('/api/v1/vertical/profiles/:id', (req: Request, res: Response) => {
+    const profile = VerticalProfileRegistry.getProfile(req.params.id as any);
+    if (!profile) return res.status(404).json({ success: false, error: 'Profile not found' });
+    res.json({ success: true, profile });
+  });
+
+  app.get('/api/v1/vertical/wizard/state', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const wizardState = manager.getWizardStepsForCompany(authCompany, authTenant);
+    res.json({ success: true, wizardState });
+  });
+
+  app.post('/api/v1/vertical/wizard/advance', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const { stepNumber, payload } = req.body;
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const updated = manager.advanceWizardStep({
+      companyId: authCompany,
+      stepNumber,
+      stepData: payload || {}
+    });
+    if (!updated.success) {
+      return res.status(400).json({ success: false, error: 'Validation failed', errors: updated.errors, wizardState: updated });
+    }
+    res.json({ success: true, wizardState: updated });
+  });
+
+  // ============================================================================
+  // ENTERPRISE ONBOARDING WIZARD & CERTIFICATION ENDPOINTS (P0-07)
+  // ============================================================================
+
+  // Get full onboarding wizard state & definitions
+  app.get('/api/v1/onboarding/wizard/state', (req: Request, res: Response) => {
+    const targetCompany = (req.query.companyId as string) || (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const targetTenant = (req.query.tenantId as string) || (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+
+    // Anti-IDOR: If authenticated with a Bearer token, enforce cross-tenant boundary
+    if ((req as any).auth && (req as any).auth.tenantId && (req as any).auth.tenantId !== targetTenant) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: Cannot access wizard state of another tenant.',
+        code: 'CROSS_TENANT_ACCESS_DENIED'
+      });
+    }
+
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const wizardState = manager.getWizardStepsForCompany(targetCompany, targetTenant);
+    const readiness = manager.evaluateReadiness(targetCompany, targetTenant);
+
+    res.json({
+      success: true,
+      wizardState,
+      readiness
+    });
+  });
+
+  // Save / advance individual onboarding step
+  app.post('/api/v1/onboarding/wizard/step', (req: Request, res: Response) => {
+    const { stepNumber, payload, companyId, tenantId } = req.body;
+    const targetCompany = companyId || (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const targetTenant = tenantId || (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+
+    if ((req as any).auth && (req as any).auth.tenantId && (req as any).auth.tenantId !== targetTenant) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: Cannot modify wizard state of another tenant.',
+        code: 'CROSS_TENANT_ACCESS_DENIED'
+      });
+    }
+
+    if (!stepNumber || typeof stepNumber !== 'number' || stepNumber < 1 || stepNumber > 19) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid step number. Must be between 1 and 19.'
+      });
+    }
+
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const result = manager.advanceWizardStep({
+      companyId: targetCompany,
+      stepNumber,
+      stepData: payload || {}
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Step validation failed.',
+        errors: result.errors,
+        currentStep: result.currentStep
+      });
+    }
+
+    const wizardState = manager.getWizardStepsForCompany(targetCompany, targetTenant);
+    res.json({
+      success: true,
+      currentStep: result.currentStep,
+      isCompleted: result.isCompleted,
+      wizardState
+    });
+  });
+
+  // Deterministic readiness evaluation (Phase 5)
+  app.get('/api/v1/onboarding/readiness', (req: Request, res: Response) => {
+    const targetCompany = (req.query.companyId as string) || (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const targetTenant = (req.query.tenantId as string) || (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+
+    if ((req as any).auth && (req as any).auth.tenantId && (req as any).auth.tenantId !== targetTenant) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: Cannot access readiness of another tenant.',
+        code: 'CROSS_TENANT_ACCESS_DENIED'
+      });
+    }
+
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const report = manager.evaluateReadiness(targetCompany, targetTenant);
+
+    res.json({
+      success: true,
+      report
+    });
+  });
+
+  // Final readiness review and explicit completion
+  app.post('/api/v1/onboarding/wizard/complete', (req: Request, res: Response) => {
+    const { companyId, tenantId } = req.body;
+    const targetCompany = companyId || (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const targetTenant = tenantId || (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+
+    if ((req as any).auth && (req as any).auth.tenantId && (req as any).auth.tenantId !== targetTenant) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: Cannot complete onboarding for another tenant.',
+        code: 'CROSS_TENANT_ACCESS_DENIED'
+      });
+    }
+
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const operatorUser = (req as any).user || { id: 'usr-admin-01', name: 'Enterprise Administrator', email: 'admin@enterprise.pilot' };
+
+    try {
+      const outcome = manager.completeOnboardingWizard({
+        companyId: targetCompany,
+        tenantId: targetTenant,
+        operatorUser
+      });
+
+      // Synchronize in-memory collections with newly materialized records
+      const syncdComp = pilotDb.getEntity<Company>('companies', targetCompany);
+      if (syncdComp && !companies.some(c => c.id === syncdComp.id)) {
+        companies.push(syncdComp);
+      }
+      const syncdTenant = pilotDb.getEntity<Tenant>('tenants', targetTenant);
+      if (syncdTenant && !tenants.some(t => t.id === syncdTenant.id)) {
+        tenants.push(syncdTenant);
+      }
+
+      recordAudit(
+        targetTenant,
+        operatorUser.id,
+        operatorUser.name,
+        'Tenant Admin',
+        'APPROVE',
+        'OnboardingWizard',
+        outcome.certificate.certificateId,
+        `Certified and launched pilot tenant ${targetTenant} / ${targetCompany} with score ${outcome.certificate.readinessScore}%`
+      );
+
+      res.json({
+        success: true,
+        certificate: outcome.certificate,
+        report: outcome.report
+      });
+    } catch (err: any) {
+      console.error('Onboarding completion error:', err);
+      res.status(500).json({
+        success: false,
+        error: err.message || 'Internal server error during onboarding materialization.',
+        correlationId: `err-${Date.now()}`
+      });
+    }
+  });
+
+  // Initialize a fresh unconfigured tenant and company for testing or onboarding
+  app.post('/api/v1/onboarding/tenant/initialize', (req: Request, res: Response) => {
+    const { tenantName, companyName, tenantCode, companyCode, profileId } = req.body;
+    const tId = `ten-${Date.now()}`;
+    const cId = `comp-${Date.now()}`;
+
+    const newTenant: Tenant = {
+      id: tId,
+      name: tenantName || 'New Pilot Enterprise Tenant',
+      code: tenantCode || `TEN-${Date.now().toString().slice(-4)}`,
+      edition: 'Enterprise',
+      ownerEmail: 'admin@newenterprise.pilot',
+      active: true,
+      createdAt: new Date().toISOString()
+    };
+
+    const newComp: Company = {
+      id: cId,
+      tenantId: tId,
+      name: companyName || 'New Pilot Enterprise Company',
+      nameAr: 'شركة تجريبية جديدة',
+      code: companyCode || `COMP-${Date.now().toString().slice(-4)}`,
+      taxNumber: '',
+      currency: 'SAR',
+      country: 'Saudi Arabia',
+      countryCode: 'SA',
+      fiscalYearStart: '01-01',
+      address: ''
+    };
+
+    pilotDb.saveEntity('tenants', newTenant, tId, cId);
+    pilotDb.saveEntity('companies', newComp, tId, cId);
+    tenants.push(newTenant);
+    companies.push(newComp);
+
+    // Initial uncompleted profile state
+    const unconfiguredState = {
+      id: cId,
+      companyId: cId,
+      tenantId: tId,
+      activeProfileId: profileId || 'COMMERCIAL_DISTRIBUTION',
+      activatedAt: new Date().toISOString(),
+      activatedBy: 'SYSTEM',
+      wizardCompleted: false,
+      wizardCurrentStep: 1,
+      wizardData: {}
+    };
+    pilotDb.saveEntity('company_active_vertical_profiles', unconfiguredState, tId, cId);
+
+    res.status(201).json({
+      success: true,
+      tenant: newTenant,
+      company: newComp,
+      state: unconfiguredState
+    });
+  });
+
+  // Profile 01: Commercial Distribution
+  app.get('/api/v1/vertical/distribution/territories', (req: Request, res: Response) => {
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const territories = manager.getTerritories(authCompany);
+    res.json({ success: true, territories });
+  });
+
+  app.post('/api/v1/vertical/distribution/territories', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const territory = CommercialDistributionEngine.createTerritory({
+      ...req.body,
+      tenantId: authTenant,
+      companyId: authCompany
+    });
+    manager.saveTerritory(territory);
+    res.json({ success: true, territory });
+  });
+
+  app.get('/api/v1/vertical/distribution/routes', (req: Request, res: Response) => {
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const routes = manager.getRoutes(authCompany);
+    res.json({ success: true, routes });
+  });
+
+  app.post('/api/v1/vertical/distribution/routes', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const route = CommercialDistributionEngine.createRoute({
+      ...req.body,
+      tenantId: authTenant,
+      companyId: authCompany
+    });
+    manager.saveRoute(route);
+    res.json({ success: true, route });
+  });
+
+  app.post('/api/v1/vertical/distribution/van-runs/dispatch', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const vanRun = CommercialDistributionEngine.dispatchVanStock({
+      ...req.body,
+      tenantId: authTenant,
+      companyId: authCompany
+    });
+    manager.saveVanAllocation(vanRun);
+    res.json({ success: true, vanRun });
+  });
+
+  app.post('/api/v1/vertical/distribution/van-runs/reconcile', (req: Request, res: Response) => {
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const { allocation, returnedStock } = req.body;
+    const reconciled = CommercialDistributionEngine.reconcileVanRun(
+      allocation,
+      returnedStock || []
+    );
+    manager.saveVanAllocation(reconciled.updatedAllocation);
+    res.json({ success: true, result: reconciled });
+  });
+
+  // Profile 02: Restaurant / F&B
+  app.get('/api/v1/vertical/restaurant/tables', (req: Request, res: Response) => {
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const tables = manager.getRestaurantTables(authCompany);
+    res.json({ success: true, tables });
+  });
+
+  app.post('/api/v1/vertical/restaurant/tables/open', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    let table = manager.getRestaurantTables(authCompany).find(t => t.id === req.body.tableId);
+    if (!table) {
+      table = RestaurantFnBEngine.createTable({
+        tenantId: authTenant,
+        companyId: authCompany,
+        branchId: req.body.branchId || 'br-01',
+        diningAreaId: req.body.diningAreaId || 'DA-01',
+        tableNumber: req.body.tableNumber || 'T-01',
+        capacity: req.body.capacity || 4
+      });
+    }
+    const opened = RestaurantFnBEngine.openTable(table, req.body.guestCount || 2, req.body.serverStaffId || 'SRV-01');
+    manager.saveRestaurantTable(opened);
+    res.json({ success: true, table: opened });
+  });
+
+  app.post('/api/v1/vertical/restaurant/orders/add-item', (req: Request, res: Response) => {
+    const { table, item } = req.body;
+    const updatedOrder = RestaurantFnBEngine.addItemToOrder(table, item);
+    res.json({ success: true, order: updatedOrder });
+  });
+
+  app.post('/api/v1/vertical/restaurant/orders/split', (req: Request, res: Response) => {
+    const { totalAmount, splitType, guestCount, seatAmounts } = req.body;
+    const split = RestaurantFnBEngine.splitBill(totalAmount, splitType || 'EQUAL', guestCount || 2, seatAmounts);
+    res.json({ success: true, split });
+  });
+
+  app.post('/api/v1/vertical/restaurant/waste', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const waste = RestaurantFnBEngine.recordKitchenWaste({
+      ...req.body,
+      tenantId: authTenant,
+      companyId: authCompany
+    });
+    manager.saveKitchenWaste(waste);
+    res.json({ success: true, waste });
+  });
+
+  // Profile 03: Retail Mobile Phones & Electronics
+  app.get('/api/v1/vertical/mobile/devices', (req: Request, res: Response) => {
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const devices = manager.getMobileDevices(authCompany);
+    res.json({ success: true, devices });
+  });
+
+  app.post('/api/v1/vertical/mobile/devices/register', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const existing = manager.getMobileDevices(authCompany);
+    const device = MobileRetailEngine.registerDevice({
+      ...req.body,
+      tenantId: authTenant,
+      companyId: authCompany,
+      existingDevices: existing
+    });
+    manager.saveMobileDevice(device);
+    res.json({ success: true, device });
+  });
+
+  app.post('/api/v1/vertical/mobile/devices/sell', (req: Request, res: Response) => {
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const existing = manager.getMobileDevices(authCompany);
+    const device = existing.find(d => d.imei1 === req.body.imei || d.id === req.body.deviceId);
+    if (!device) return res.status(404).json({ success: false, error: 'Device not found' });
+    const sold = MobileRetailEngine.processDeviceSale(device, req.body.invoiceId || 'INV-001', req.body.customerId || 'CUST-001');
+    manager.saveMobileDevice(sold);
+    res.json({ success: true, device: sold });
+  });
+
+  app.post('/api/v1/vertical/mobile/trade-in/evaluate', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const evaluation = MobileRetailEngine.evaluateTradeIn({
+      ...req.body,
+      tenantId: authTenant,
+      companyId: authCompany
+    });
+    manager.saveTradeIn(evaluation);
+    res.json({ success: true, evaluation });
+  });
+
+  app.post('/api/v1/vertical/mobile/repairs', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const jobCard = MobileRetailEngine.createRepairJobCard({
+      ...req.body,
+      tenantId: authTenant,
+      companyId: authCompany
+    });
+    manager.saveRepairJobCard(jobCard);
+    res.json({ success: true, jobCard });
+  });
+
+  app.post('/api/v1/vertical/mobile/repairs/:id/complete', (req: Request, res: Response) => {
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const jobCards = manager.getRepairJobCards(authCompany);
+    const jobCard = jobCards.find(j => j.id === req.params.id);
+    if (!jobCard) return res.status(404).json({ success: false, error: 'Job card not found' });
+    const completed = MobileRetailEngine.completeRepairJobCard(jobCard, req.body.partsUsed || [], req.body.laborHours || 1);
+    manager.saveRepairJobCard(completed);
+    res.json({ success: true, jobCard: completed });
+  });
+
+  // Profiles 04 & 05: Fashion Retail (Women & Children)
+  app.post('/api/v1/vertical/fashion/matrix/generate', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const result = FashionRetailEngine.createStyleWithMatrix({
+      tenantId: authTenant,
+      companyId: authCompany,
+      ...req.body
+    });
+    manager.saveApparelStyle(result.style);
+    result.variants.forEach(v => manager.saveApparelVariant(v));
+    res.json({ success: true, styleMaster: result.style, variants: result.variants });
+  });
+
+  app.post('/api/v1/vertical/fashion/holds', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const hold = FashionRetailEngine.createFittingRoomHold({
+      ...req.body,
+      tenantId: authTenant,
+      companyId: authCompany
+    });
+    manager.saveFittingRoomHold(hold);
+    res.json({ success: true, hold });
+  });
+
+  app.post('/api/v1/vertical/fashion/reservations', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const reservation = FashionRetailEngine.createCustomerReservation({
+      ...req.body,
+      tenantId: authTenant,
+      companyId: authCompany
+    });
+    manager.saveCustomerReservation(reservation);
+    res.json({ success: true, reservation });
+  });
+
+  app.post('/api/v1/vertical/fashion/markdown/apply', (req: Request, res: Response) => {
+    const { style, rule } = req.body;
+    const markedDown = FashionRetailEngine.applySeasonalMarkdown(style, rule);
+    res.json({ success: true, style: markedDown });
+  });
+
+  app.post('/api/v1/vertical/fashion/gift-receipt', (req: Request, res: Response) => {
+    const { originalReceiptNumber, storeName, items, exchangeWindowDays } = req.body;
+    const giftReceipt = FashionRetailEngine.generateGiftReceipt(originalReceiptNumber || 'REC-001', storeName || 'Boutique', items || [], exchangeWindowDays || 30);
+    res.json({ success: true, giftReceipt });
+  });
+
+  // Profiles 06, 07, 08: Apparel Manufacturing
+  app.post('/api/v1/vertical/apparel/marker-plan', (req: Request, res: Response) => {
+    const marker = ApparelManufacturingEngine.createMarkerPlan(req.body);
+    res.json({ success: true, marker });
+  });
+
+  app.post('/api/v1/vertical/apparel/cut-orders', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const cutOrder = ApparelManufacturingEngine.createCutOrder({
+      ...req.body,
+      tenantId: authTenant,
+      companyId: authCompany
+    });
+    manager.saveCutOrder(cutOrder);
+    res.json({ success: true, cutOrder });
+  });
+
+  app.post('/api/v1/vertical/apparel/bundle-tickets', (req: Request, res: Response) => {
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const { cutOrder, bundleSize, colorName } = req.body;
+    const bundles = ApparelManufacturingEngine.generateBundleTickets(cutOrder, bundleSize || 20, colorName);
+    bundles.forEach(b => manager.saveBundleTicket(b));
+    res.json({ success: true, bundles, count: bundles.length });
+  });
+
+  app.post('/api/v1/vertical/apparel/bundle-tickets/record-operation', (req: Request, res: Response) => {
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const { bundle, operationName, operatorId, operatorName, pieceRatePerPiece } = req.body;
+    const updated = ApparelManufacturingEngine.recordBundleOperation(
+      bundle,
+      operationName,
+      operatorId,
+      operatorName,
+      pieceRatePerPiece
+    );
+    manager.saveBundleTicket(updated);
+    res.json({ success: true, bundle: updated });
+  });
+
+  app.post('/api/v1/vertical/apparel/safety-qa', (req: Request, res: Response) => {
+    const authTenant = (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
+    const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
+    const manager = IndustryVerticalManager.getInstance(pilotDb);
+    const checkpoint = ApparelManufacturingEngine.evaluateChildrenSafetyQA({
+      ...req.body,
+      tenantId: authTenant,
+      companyId: authCompany
+    });
+    manager.saveSafetyQACheckpoint(checkpoint);
+    res.json({ success: true, checkpoint });
   });
 
   // Pilot Readiness Phase 3B Quality Gate (15 Scenarios - Hardware Abstraction & Variable Weight EAN-13)
@@ -14147,6 +15908,225 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
+  });
+
+  // ==================== RESTAURANT OPERATIONS & KDS ENDPOINTS ====================
+  app.get('/api/v1/restaurant/tables', (req: Request, res: Response) => {
+    let list = restaurantTables;
+    if (req.query.branchId) {
+      list = list.filter(t => t.branchId === req.query.branchId);
+    }
+    if (req.query.status) {
+      list = list.filter(t => t.status === req.query.status);
+    }
+    res.json({ success: true, count: list.length, tables: list });
+  });
+
+  app.post('/api/v1/restaurant/tables', (req: Request, res: Response) => {
+    try {
+      const newTable: RestaurantTable = {
+        id: `tbl-${Date.now()}`,
+        tableNumber: req.body.tableNumber,
+        capacity: Number(req.body.capacity) || 4,
+        section: req.body.section || 'Main Dining',
+        status: req.body.status || 'AVAILABLE',
+        currentOrderId: req.body.currentOrderId,
+        activeGuests: req.body.activeGuests ? Number(req.body.activeGuests) : undefined,
+        serverStaffId: req.body.serverStaffId,
+        companyId: req.body.companyId || 'comp-001',
+        branchId: req.body.branchId || 'br-001'
+      };
+      restaurantTables.push(newTable);
+      res.status(201).json({ success: true, table: newTable });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  app.put('/api/v1/restaurant/tables/:id', (req: Request, res: Response) => {
+    const table = restaurantTables.find(t => t.id === req.params.id);
+    if (!table) {
+      return res.status(404).json({ success: false, error: 'Table not found' });
+    }
+    if (req.body.status !== undefined) table.status = req.body.status;
+    if (req.body.currentOrderId !== undefined) table.currentOrderId = req.body.currentOrderId;
+    if (req.body.activeGuests !== undefined) table.activeGuests = Number(req.body.activeGuests);
+    if (req.body.serverStaffId !== undefined) table.serverStaffId = req.body.serverStaffId;
+    res.json({ success: true, table });
+  });
+
+  app.get('/api/v1/restaurant/kds/orders', (req: Request, res: Response) => {
+    let list = kitchenOrders;
+    if (req.query.station) {
+      list = list.filter(o => o.station === req.query.station);
+    }
+    if (req.query.status) {
+      list = list.filter(o => o.status === req.query.status);
+    }
+    res.json({ success: true, count: list.length, orders: list });
+  });
+
+  app.post('/api/v1/restaurant/kds/orders', (req: Request, res: Response) => {
+    try {
+      const newOrder: KitchenDisplayOrder = {
+        id: `kds-${Date.now()}`,
+        orderNumber: req.body.orderNumber || `KDS-${Date.now().toString().slice(-4)}`,
+        tableNumber: req.body.tableNumber,
+        orderType: req.body.orderType || 'DINE_IN',
+        status: 'PENDING',
+        station: req.body.station || 'HOT_KITCHEN',
+        priority: req.body.priority || 'NORMAL',
+        items: req.body.items || [],
+        createdAt: new Date().toISOString(),
+        companyId: req.body.companyId || 'comp-001',
+        branchId: req.body.branchId || 'br-001'
+      };
+      kitchenOrders.push(newOrder);
+      res.status(201).json({ success: true, order: newOrder });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  app.patch('/api/v1/restaurant/kds/orders/:id/status', (req: Request, res: Response) => {
+    const order = kitchenOrders.find(o => o.id === req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Kitchen order not found' });
+    }
+    order.status = req.body.status;
+    if (req.body.status === 'READY') {
+      order.readyAt = new Date().toISOString();
+    }
+    res.json({ success: true, order });
+  });
+
+  app.get('/api/v1/restaurant/waste', (_req: Request, res: Response) => {
+    res.json({ success: true, count: kitchenWasteRecords.length, wasteRecords: kitchenWasteRecords });
+  });
+
+  app.post('/api/v1/restaurant/waste', (req: Request, res: Response) => {
+    try {
+      const newWaste: KitchenWasteRecord = {
+        id: `kw-${Date.now()}`,
+        wasteNumber: req.body.wasteNumber || `WST-${Date.now().toString().slice(-4)}`,
+        date: req.body.date || new Date().toISOString().split('T')[0],
+        itemId: req.body.itemId,
+        itemName: req.body.itemName,
+        quantity: Number(req.body.quantity),
+        uom: req.body.uom || 'KG',
+        costAmount: Number(req.body.costAmount),
+        reason: req.body.reason || 'SPOILAGE',
+        reportedBy: req.body.reportedBy || 'Chef Staff',
+        actionTaken: req.body.actionTaken || 'Recorded to waste log',
+        companyId: req.body.companyId || 'comp-001',
+        branchId: req.body.branchId || 'br-001'
+      };
+      kitchenWasteRecords.push(newWaste);
+      res.status(201).json({ success: true, wasteRecord: newWaste });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  // ==================== CRM TICKETS ENDPOINTS ====================
+  app.get('/api/v1/crm/tickets', (req: Request, res: Response) => {
+    let list = crmTickets;
+    if (req.query.customerId) {
+      list = list.filter(t => t.customerId === req.query.customerId);
+    }
+    if (req.query.status) {
+      list = list.filter(t => t.status === req.query.status);
+    }
+    res.json({ success: true, count: list.length, tickets: list });
+  });
+
+  app.post('/api/v1/crm/tickets', (req: Request, res: Response) => {
+    try {
+      const newTicket: CRMTicket = {
+        id: `tkt-${Date.now()}`,
+        ticketNumber: req.body.ticketNumber || `TCK-${Date.now().toString().slice(-4)}`,
+        customerId: req.body.customerId,
+        customerName: req.body.customerName || 'Customer',
+        subject: req.body.subject,
+        description: req.body.description,
+        priority: req.body.priority || 'MEDIUM',
+        status: 'OPEN',
+        category: req.body.category || 'INQUIRY',
+        assignedTo: req.body.assignedTo,
+        assignedToName: req.body.assignedToName,
+        createdAt: new Date().toISOString(),
+        companyId: req.body.companyId || 'comp-001'
+      };
+      crmTickets.push(newTicket);
+      res.status(201).json({ success: true, ticket: newTicket });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  app.patch('/api/v1/crm/tickets/:id/status', (req: Request, res: Response) => {
+    const ticket = crmTickets.find(t => t.id === req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ success: false, error: 'Ticket not found' });
+    }
+    ticket.status = req.body.status;
+    if (req.body.status === 'RESOLVED' || req.body.status === 'CLOSED') {
+      ticket.resolvedAt = new Date().toISOString();
+    }
+    res.json({ success: true, ticket });
+  });
+
+  // ==================== PROJECT TIMESHEETS ENDPOINTS ====================
+  app.get('/api/v1/projects/timesheets', (req: Request, res: Response) => {
+    let list = projectTimesheets;
+    if (req.query.projectId) {
+      list = list.filter(t => t.projectId === req.query.projectId);
+    }
+    if (req.query.employeeId) {
+      list = list.filter(t => t.employeeId === req.query.employeeId);
+    }
+    if (req.query.status) {
+      list = list.filter(t => t.status === req.query.status);
+    }
+    res.json({ success: true, count: list.length, timesheets: list });
+  });
+
+  app.post('/api/v1/projects/timesheets', (req: Request, res: Response) => {
+    try {
+      const hoursWorked = Number(req.body.hoursWorked) || 0;
+      const hourlyRate = Number(req.body.hourlyRate) || 0;
+      const newTimesheet: ProjectTimesheet = {
+        id: `ts-${Date.now()}`,
+        timesheetNumber: req.body.timesheetNumber || `TS-${Date.now().toString().slice(-4)}`,
+        projectId: req.body.projectId,
+        projectName: req.body.projectName || 'Project',
+        employeeId: req.body.employeeId,
+        employeeName: req.body.employeeName || 'Consultant',
+        date: req.body.date || new Date().toISOString().split('T')[0],
+        hoursWorked,
+        billableHours: req.body.billableHours !== undefined ? Number(req.body.billableHours) : hoursWorked,
+        taskDescription: req.body.taskDescription || 'Professional Services',
+        hourlyRate,
+        totalCost: hoursWorked * hourlyRate,
+        status: 'SUBMITTED',
+        companyId: req.body.companyId || 'comp-001'
+      };
+      projectTimesheets.push(newTimesheet);
+      res.status(201).json({ success: true, timesheet: newTimesheet });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/v1/projects/timesheets/:id/approve', (req: Request, res: Response) => {
+    const ts = projectTimesheets.find(t => t.id === req.params.id);
+    if (!ts) {
+      return res.status(404).json({ success: false, error: 'Timesheet not found' });
+    }
+    ts.status = 'APPROVED';
+    ts.approvedBy = req.body.approvedBy || 'usr-001';
+    ts.approvedAt = new Date().toISOString();
+    res.json({ success: true, timesheet: ts });
   });
 
 

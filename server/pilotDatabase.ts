@@ -32,11 +32,64 @@ export class PilotDatabaseService {
   private constructor(customDbPath?: string) {
     const dataDir = process.env.PERSISTENT_DATA_PATH || process.env.DATA_DIR || path.resolve(process.cwd(), 'data');
     if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+      try {
+        fs.mkdirSync(dataDir, { recursive: true });
+      } catch {}
     }
 
-    this.dbPath = customDbPath || process.env.DATABASE_PATH || path.join(dataDir, 'pilot_erp.db');
-    this.db = new DatabaseSync(this.dbPath);
+    let targetDbPath = customDbPath || process.env.DATABASE_PATH;
+    if (!targetDbPath) {
+      this.dbPath = path.join(dataDir, 'pilot_erp.db');
+    } else if (targetDbPath === ':memory:') {
+      this.dbPath = ':memory:';
+    } else {
+      const resolved = path.resolve(targetDbPath);
+      // If path exists and is a directory, or if it doesn't have a file extension (.db/.sqlite)
+      if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+        this.dbPath = path.join(resolved, 'pilot_erp.db');
+      } else if (!path.extname(resolved)) {
+        if (!fs.existsSync(resolved)) {
+          try {
+            fs.mkdirSync(resolved, { recursive: true });
+          } catch {}
+        }
+        this.dbPath = path.join(resolved, 'pilot_erp.db');
+      } else {
+        this.dbPath = resolved;
+      }
+    }
+
+    // Ensure parent directory exists before creating DatabaseSync
+    if (this.dbPath !== ':memory:') {
+      const parentDir = path.dirname(this.dbPath);
+      if (!fs.existsSync(parentDir)) {
+        try {
+          fs.mkdirSync(parentDir, { recursive: true });
+        } catch {}
+      }
+    }
+
+    try {
+      this.db = new DatabaseSync(this.dbPath);
+    } catch (err: any) {
+      console.warn(`[PilotDatabaseService] Unable to open database at "${this.dbPath}": ${err.message}. Initializing fallback...`);
+      const fallbackDir = path.resolve(process.cwd(), 'data');
+      if (!fs.existsSync(fallbackDir)) {
+        try {
+          fs.mkdirSync(fallbackDir, { recursive: true });
+        } catch {}
+      }
+      const fallbackPath = path.join(fallbackDir, 'pilot_erp.db');
+      try {
+        this.dbPath = fallbackPath;
+        this.db = new DatabaseSync(this.dbPath);
+      } catch (innerErr: any) {
+        console.warn(`[PilotDatabaseService] Fallback to "${fallbackPath}" failed: ${innerErr.message}. Defaulting to in-memory database.`);
+        this.dbPath = ':memory:';
+        this.db = new DatabaseSync(this.dbPath);
+      }
+    }
+
     this.initSchema();
   }
 
@@ -169,6 +222,56 @@ export class PilotDatabaseService {
     stmt.run(collection, id, ten, comp, json, now);
   }
 
+  public upsertEntity<T = any>(
+    collection: string,
+    idOrEntity: string | (T & { id?: string; tenantId?: string; companyId?: string }),
+    entityOrTenant?: T | string,
+    tenantId?: string,
+    companyId?: string
+  ): void {
+    if (typeof idOrEntity === 'string') {
+      const id = idOrEntity;
+      const entity = (typeof entityOrTenant === 'object' && entityOrTenant !== null)
+        ? { ...entityOrTenant, id }
+        : ({ id } as any);
+      this.saveEntity(collection, entity, tenantId, companyId);
+    } else {
+      this.saveEntity(collection, idOrEntity, entityOrTenant as string | undefined, tenantId);
+    }
+  }
+
+  public listEntities<T = any>(collection: string, tenantId?: string, companyId?: string): T[] {
+    let stmt;
+    let rows: Array<{ id: string; tenant_id: string; company_id: string; data: string; updated_at: string }>;
+    if (tenantId && companyId) {
+      stmt = this.db.prepare('SELECT id, tenant_id, company_id, data, updated_at FROM pilot_entities WHERE collection = ? AND tenant_id = ? AND company_id = ?');
+      rows = stmt.all(collection, tenantId, companyId) as any;
+    } else if (tenantId) {
+      stmt = this.db.prepare('SELECT id, tenant_id, company_id, data, updated_at FROM pilot_entities WHERE collection = ? AND tenant_id = ?');
+      rows = stmt.all(collection, tenantId) as any;
+    } else if (companyId) {
+      stmt = this.db.prepare('SELECT id, tenant_id, company_id, data, updated_at FROM pilot_entities WHERE collection = ? AND company_id = ?');
+      rows = stmt.all(collection, companyId) as any;
+    } else {
+      stmt = this.db.prepare('SELECT id, tenant_id, company_id, data, updated_at FROM pilot_entities WHERE collection = ?');
+      rows = stmt.all(collection) as any;
+    }
+    return rows.map(r => {
+      try {
+        const parsed = JSON.parse(r.data);
+        if (typeof parsed === 'object' && parsed !== null) {
+          if (!parsed.id) parsed.id = r.id;
+          if (!parsed.tenant_id && !parsed.tenantId) parsed.tenant_id = r.tenant_id;
+          if (!parsed.company_id && !parsed.companyId) parsed.company_id = r.company_id;
+          if (!parsed.updated_at && !parsed.updatedAt) parsed.updated_at = r.updated_at;
+        }
+        return parsed as T;
+      } catch {
+        return r.data as unknown as T;
+      }
+    });
+  }
+
   public saveCollection<T extends { id?: string; tenantId?: string; companyId?: string }>(
     collection: string,
     entities: T[],
@@ -204,6 +307,43 @@ export class PilotDatabaseService {
   public deleteEntity(collection: string, id: string): void {
     const stmt = this.db.prepare('DELETE FROM pilot_entities WHERE collection = ? AND id = ?');
     stmt.run(collection, id);
+  }
+
+  public getEntity<T>(collection: string, id: string): T | null {
+    const stmt = this.db.prepare('SELECT data FROM pilot_entities WHERE collection = ? AND id = ?');
+    const row = stmt.get(collection, id) as { data: string } | undefined;
+    return row ? (JSON.parse(row.data) as T) : null;
+  }
+
+  public queryEntities<T>(collection: string, filter?: { tenantId?: string; companyId?: string }): T[] {
+    if (filter?.companyId && filter?.tenantId) {
+      const stmt = this.db.prepare('SELECT data FROM pilot_entities WHERE collection = ? AND tenant_id = ? AND company_id = ?');
+      const rows = stmt.all(collection, filter.tenantId, filter.companyId) as Array<{ data: string }>;
+      return rows.map(r => JSON.parse(r.data) as T);
+    } else if (filter?.tenantId) {
+      const stmt = this.db.prepare('SELECT data FROM pilot_entities WHERE collection = ? AND tenant_id = ?');
+      const rows = stmt.all(collection, filter.tenantId) as Array<{ data: string }>;
+      return rows.map(r => JSON.parse(r.data) as T);
+    } else if (filter?.companyId) {
+      const stmt = this.db.prepare('SELECT data FROM pilot_entities WHERE collection = ? AND company_id = ?');
+      const rows = stmt.all(collection, filter.companyId) as Array<{ data: string }>;
+      return rows.map(r => JSON.parse(r.data) as T);
+    }
+    return this.loadCollection<T>(collection);
+  }
+
+  public transaction<T>(fn: (db: PilotDatabaseService) => T): T {
+    this.db.exec('BEGIN TRANSACTION;');
+    try {
+      const res = fn(this);
+      this.db.exec('COMMIT;');
+      return res;
+    } catch (err) {
+      try {
+        this.db.exec('ROLLBACK;');
+      } catch {}
+      throw err;
+    }
   }
 
   // ==================== STORAGE PERSISTENCE & WAL ENGINE ====================
@@ -479,38 +619,229 @@ export class PilotDatabaseService {
     return currentHash;
   }
 
+  /**
+   * Verifies the cryptographic integrity of the entire audit vault chain
+   */
+  public verifyAuditVaultIntegrity(): { valid: boolean; totalBlocks: number; brokenBlockIndex?: number } {
+    const rows = this.db.prepare('SELECT block_index, event_id, action, previous_hash, current_hash, payload, created_at FROM pilot_audit_vault ORDER BY block_index ASC').all() as any[];
+    let expectedPrevious = 'GENESIS_PILOT_AUDIT_HASH_00000000000000000000000000000000';
+    for (const row of rows) {
+      if (row.previous_hash !== expectedPrevious) {
+        return { valid: false, totalBlocks: rows.length, brokenBlockIndex: row.block_index };
+      }
+      const calculated = crypto.createHash('sha256')
+        .update(row.previous_hash + row.event_id + row.action + row.payload + row.created_at)
+        .digest('hex');
+      if (calculated !== row.current_hash) {
+        return { valid: false, totalBlocks: rows.length, brokenBlockIndex: row.block_index };
+      }
+      expectedPrevious = row.current_hash;
+    }
+    return { valid: true, totalBlocks: rows.length };
+  }
+
+  /**
+   * Appends an immutable, tamper-evident block into the audit vault with previous hash link
+   */
+  public appendAuditBlock(
+    eventId: string,
+    action: string,
+    payload: any,
+    tenantId = 'ten-001',
+    companyId = 'comp-001'
+  ): { blockIndex: number; previousHash: string; currentHash: string } {
+    const lastBlock = this.db.prepare('SELECT current_hash FROM pilot_audit_vault ORDER BY block_index DESC LIMIT 1').get() as { current_hash: string } | undefined;
+    const previousHash = lastBlock?.current_hash || 'GENESIS_PILOT_AUDIT_HASH_00000000000000000000000000000000';
+
+    const createdAt = new Date().toISOString();
+    const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+
+    const currentHash = crypto.createHash('sha256')
+      .update(previousHash + eventId + action + payloadStr + createdAt)
+      .digest('hex');
+
+    const stmt = this.db.prepare(`
+      INSERT INTO pilot_audit_vault (event_id, tenant_id, company_id, action, previous_hash, current_hash, payload, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(eventId, tenantId, companyId, action, previousHash, currentHash, payloadStr, createdAt);
+    const blockIndex = Number(result.lastInsertRowid || 1);
+
+    return {
+      blockIndex,
+      previousHash,
+      currentHash
+    };
+  }
+
+  /**
+   * Verifies the cryptographic chain across audit vault blocks
+   */
+  public verifyAuditVaultChain(tenantId?: string): {
+    isValid: boolean;
+    valid: boolean;
+    totalBlocks: number;
+    message: string;
+  } {
+    const query = tenantId
+      ? 'SELECT block_index, event_id, action, previous_hash, current_hash, payload, created_at FROM pilot_audit_vault WHERE tenant_id = ? ORDER BY block_index ASC'
+      : 'SELECT block_index, event_id, action, previous_hash, current_hash, payload, created_at FROM pilot_audit_vault ORDER BY block_index ASC';
+    const rows = (tenantId ? this.db.prepare(query).all(tenantId) : this.db.prepare(query).all()) as any[];
+
+    if (rows.length === 0) {
+      return {
+        isValid: true,
+        valid: true,
+        totalBlocks: 0,
+        message: 'Empty audit vault is valid.'
+      };
+    }
+
+    let expectedPrevious = rows[0].previous_hash;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (i > 0 && row.previous_hash !== expectedPrevious) {
+        return {
+          isValid: false,
+          valid: false,
+          totalBlocks: rows.length,
+          message: `Broken link at block index ${row.block_index}`
+        };
+      }
+      const calculated = crypto.createHash('sha256')
+        .update(row.previous_hash + row.event_id + row.action + row.payload + row.created_at)
+        .digest('hex');
+      if (calculated !== row.current_hash) {
+        return {
+          isValid: false,
+          valid: false,
+          totalBlocks: rows.length,
+          message: `Hash mismatch at block index ${row.block_index}`
+        };
+      }
+      expectedPrevious = row.current_hash;
+    }
+
+    return {
+      isValid: true,
+      valid: true,
+      totalBlocks: rows.length,
+      message: `Audit vault verified across ${rows.length} blocks: SHA-256 chain 100% unbroken`
+    };
+  }
+
+  public getAuditLogs(filter?: { tenantId?: string; limit?: number }): Array<{
+    blockIndex: number;
+    eventId: string;
+    tenantId: string;
+    companyId: string;
+    action: string;
+    previousHash: string;
+    currentHash: string;
+    payload: any;
+    details: any;
+    createdAt: string;
+  }> {
+    let query = 'SELECT block_index, event_id, tenant_id, company_id, action, previous_hash, current_hash, payload, created_at FROM pilot_audit_vault';
+    const params: any[] = [];
+    if (filter?.tenantId) {
+      query += ' WHERE tenant_id = ?';
+      params.push(filter.tenantId);
+    }
+    query += ' ORDER BY block_index DESC';
+    if (filter?.limit) {
+      query += ` LIMIT ${Math.floor(filter.limit)}`;
+    }
+    const rows = this.db.prepare(query).all(...params) as any[];
+    return rows.map(r => {
+      let parsed = {};
+      try { parsed = JSON.parse(r.payload); } catch {}
+      return {
+        blockIndex: r.block_index,
+        eventId: r.event_id,
+        tenantId: r.tenant_id,
+        companyId: r.company_id,
+        action: r.action,
+        previousHash: r.previous_hash,
+        currentHash: r.current_hash,
+        payload: parsed,
+        details: parsed,
+        createdAt: r.created_at
+      };
+    });
+  }
+
   // ==================== BACKUP & RESTORE ====================
 
-  public createBackup(snapshotName: string, activeCollections: Record<string, any[]>): PilotBackupPayload {
+  public createBackup(snapshotName?: string, activeCollections?: Record<string, any[]>): PilotBackupPayload {
     const backupId = `BAK-${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
     const timestamp = new Date().toISOString();
 
-    const collectionCounts: Record<string, number> = {};
-    let totalRecords = 0;
-
-    for (const [col, arr] of Object.entries(activeCollections)) {
-      collectionCounts[col] = Array.isArray(arr) ? arr.length : 0;
-      totalRecords += collectionCounts[col];
+    if (!activeCollections) {
+      activeCollections = {};
+      const allEntitiesStmt = this.db.prepare('SELECT collection, id, tenant_id, company_id, data, updated_at FROM pilot_entities');
+      const allRows = allEntitiesStmt.all() as Array<{ collection: string; id: string; tenant_id: string; company_id: string; data: string; updated_at: string }>;
+      for (const row of allRows) {
+        if (!activeCollections[row.collection]) {
+          activeCollections[row.collection] = [];
+        }
+        try {
+          activeCollections[row.collection].push(JSON.parse(row.data));
+        } catch {
+          activeCollections[row.collection].push({ id: row.id, data: row.data });
+        }
+      }
     }
 
-    const rawDataStr = JSON.stringify(activeCollections);
+    const collectionCounts: Record<string, number> = {};
+    let totalRecords = 0;
+    const entities: any[] = [];
+
+    for (const [col, arr] of Object.entries(activeCollections)) {
+      if (col === 'entities') continue;
+      const count = Array.isArray(arr) ? arr.length : 0;
+      collectionCounts[col] = count;
+      totalRecords += count;
+
+      if (Array.isArray(arr)) {
+        for (const item of arr) {
+          entities.push({
+            collection: col,
+            id: item.id || `ent-${Math.random().toString(36).slice(2, 7)}`,
+            tenant_id: item.tenantId || item.tenant_id || 'ten-001',
+            company_id: item.companyId || item.company_id || 'comp-001',
+            data: JSON.stringify(item),
+            updated_at: item.updatedAt || item.updated_at || timestamp
+          });
+        }
+      }
+    }
+
+    const payloadData: any = {
+      ...activeCollections,
+      entities
+    };
+
+    const rawDataStr = JSON.stringify(payloadData);
     const checksumSha256 = crypto.createHash('sha256').update(rawDataStr).digest('hex');
 
-    const metadata: PilotBackupMetadata = {
+    const metadata: PilotBackupMetadata & { schemaVersion?: number; checksum?: string } = {
       backupId,
       snapshotName: snapshotName || `Retail Pilot Snapshot ${new Date().toLocaleDateString()}`,
       timestamp,
       version: '1.0.0',
+      schemaVersion: 1,
       platformVersion: '2.8.0-build.104',
       architectureBaseline: 'v2.8',
       checksumSha256,
+      checksum: checksumSha256,
       totalRecords,
       collectionCounts
     };
 
     const payload: PilotBackupPayload = {
       metadata,
-      data: activeCollections
+      data: payloadData
     };
 
     const stmt = this.db.prepare(`
@@ -530,7 +861,7 @@ export class PilotDatabaseService {
     return rows.map(r => JSON.parse(r.metadata) as PilotBackupMetadata);
   }
 
-  public restoreBackup(payload: PilotBackupPayload): PilotRestoreResult {
+  public restoreBackup(payload: PilotBackupPayload): PilotRestoreResult & { restoredCount: number } {
     if (!payload || !payload.metadata || !payload.data) {
       throw new Error('Invalid backup payload format.');
     }
@@ -538,9 +869,10 @@ export class PilotDatabaseService {
     const { metadata, data } = payload;
     const rawDataStr = JSON.stringify(data);
     const calculatedHash = crypto.createHash('sha256').update(rawDataStr).digest('hex');
+    const expectedHash = metadata.checksumSha256 || (metadata as any).checksum;
 
-    if (calculatedHash !== metadata.checksumSha256) {
-      throw new Error(`Checksum integrity mismatch! Expected SHA-256: ${metadata.checksumSha256}, Calculated: ${calculatedHash}`);
+    if (calculatedHash !== expectedHash) {
+      throw new Error(`Checksum integrity mismatch! Expected SHA-256: ${expectedHash}, Calculated: ${calculatedHash}`);
     }
 
     this.db.exec('BEGIN TRANSACTION;');
@@ -556,16 +888,41 @@ export class PilotDatabaseService {
       const now = new Date().toISOString();
       let restoredCount = 0;
       const collectionsRestored: string[] = [];
+      const seenKeys = new Set<string>();
 
       for (const [col, records] of Object.entries(data)) {
+        if (col === 'entities') continue;
         if (!Array.isArray(records)) continue;
         collectionsRestored.push(col);
         for (const item of records) {
           const id = item.id || `res-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-          const ten = item.tenantId || 'ten-001';
-          const comp = item.companyId || 'comp-001';
-          insertStmt.run(col, id, ten, comp, JSON.stringify(item), now);
-          restoredCount++;
+          const ten = item.tenantId || item.tenant_id || 'ten-001';
+          const comp = item.companyId || item.company_id || 'comp-001';
+          const key = `${col}:${id}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            insertStmt.run(col, id, ten, comp, JSON.stringify(item), now);
+            restoredCount++;
+          }
+        }
+      }
+
+      if (Array.isArray((data as any).entities)) {
+        for (const ent of (data as any).entities) {
+          const col = ent.collection || 'entities';
+          const id = ent.id;
+          const key = `${col}:${id}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            const ten = ent.tenant_id || ent.tenantId || 'ten-001';
+            const comp = ent.company_id || ent.companyId || 'comp-001';
+            const rawData = typeof ent.data === 'string' ? ent.data : JSON.stringify(ent.data || ent);
+            insertStmt.run(col, id, ten, comp, rawData, now);
+            restoredCount++;
+            if (!collectionsRestored.includes(col)) {
+              collectionsRestored.push(col);
+            }
+          }
         }
       }
 
@@ -578,6 +935,7 @@ export class PilotDatabaseService {
         restoredAt: new Date().toISOString(),
         backupId: metadata.backupId,
         totalRecordsRestored: restoredCount,
+        restoredCount,
         collectionsRestored,
         message: `Successfully restored ${restoredCount} records across ${collectionsRestored.length} collections with verified SHA-256 integrity.`
       };

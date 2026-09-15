@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   ClipboardList,
   Sliders,
+  Palette,
   Wrench,
   KeyRound,
   Car,
@@ -38,6 +39,7 @@ import {
   Globe,
   ChevronDown,
   Sparkles,
+  Award,
   ChevronRight
 } from 'lucide-react';
 import { ModuleView, usePlatform } from '../../context/PlatformContext';
@@ -59,7 +61,7 @@ interface NavCategory {
 }
 
 export const Sidebar: React.FC = () => {
-  const { lang, activeModule, setActiveModule, pendingApprovalsCount, anomaliesCount } = usePlatform();
+  const { lang, activeModule, setActiveModule, pendingApprovalsCount, anomaliesCount, branding } = usePlatform();
   const isAr = lang === 'ar';
 
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
@@ -225,6 +227,22 @@ export const Sidebar: React.FC = () => {
           icon: Sliders
         },
         {
+          id: 'branding',
+          labelEn: 'Tenant Identity & Branding',
+          labelAr: 'الهوية المؤسسية والعلامة التجارية',
+          icon: Palette,
+          badge: 'P0-08',
+          badgeColor: 'bg-amber-500 text-white'
+        },
+        {
+          id: 'onboarding_wizard',
+          labelEn: 'Enterprise Setup Wizard',
+          labelAr: 'معالج الإعداد المؤسسي',
+          icon: Award,
+          badge: '19-Step',
+          badgeColor: 'bg-blue-600 text-white'
+        },
+        {
           id: 'platform_readiness',
           labelEn: 'Platform Readiness (100%)',
           labelAr: 'جاهزية المنصة والتشغيل',
@@ -319,14 +337,21 @@ export const Sidebar: React.FC = () => {
                         key={item.id}
                         type="button"
                         onClick={() => setActiveModule(item.id)}
+                        style={isActive ? {
+                          backgroundColor: branding?.primaryColor || '#0B1F3A',
+                          borderColor: `${branding?.accentColor || '#F28C28'}4D`
+                        } : {}}
                         className={`w-full min-h-[40px] flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition cursor-pointer ${
                           isActive
-                            ? 'bg-[#0B1F3A] text-white shadow-md shadow-[#0B1F3A]/20 font-bold border border-[#F28C28]/30'
+                            ? 'text-white shadow-md font-bold border'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 truncate min-w-0">
-                          <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#F28C28]' : 'text-slate-500 dark:text-slate-400'}`} />
+                          <Icon 
+                            className="w-4 h-4 shrink-0" 
+                            style={isActive ? { color: branding?.accentColor || '#F28C28' } : {}} 
+                          />
                           <span className="truncate text-xs font-semibold">
                             {isAr ? item.labelAr : item.labelEn}
                           </span>
@@ -338,11 +363,19 @@ export const Sidebar: React.FC = () => {
                               {isAr ? 'قريباً' : 'Soon'}
                             </span>
                           ) : item.badge ? (
-                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${item.badgeColor || 'bg-[#F28C28] text-white'}`}>
+                            <span 
+                              className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${item.badgeColor || 'text-white'}`}
+                              style={!item.badgeColor ? { backgroundColor: branding?.accentColor || '#F28C28' } : {}}
+                            >
                               {item.badge}
                             </span>
                           ) : (
-                            isActive && <ChevronRight className="w-3.5 h-3.5 text-[#F28C28] rtl:rotate-180" />
+                            isActive && (
+                              <ChevronRight 
+                                className="w-3.5 h-3.5 rtl:rotate-180" 
+                                style={{ color: branding?.accentColor || '#F28C28' }} 
+                              />
+                            )
                           )}
                         </div>
                       </button>
@@ -360,18 +393,39 @@ export const Sidebar: React.FC = () => {
         <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 border border-slate-200 dark:border-slate-800 text-xs space-y-1.5">
           <div className="flex items-center justify-between text-slate-900 dark:text-white font-semibold">
             <span className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#F28C28]" />
-              <span className="font-bold">{isAr ? 'منصة إيه إم للأعمال' : 'AM Business Platform'}</span>
+              <Sparkles className="w-3.5 h-3.5" style={{ color: branding?.accentColor || '#F28C28' }} />
+              <span className="font-bold truncate max-w-[140px]">
+                {isAr 
+                  ? (branding?.appNameAr || branding?.appName || 'منصة إيه إم للأعمال')
+                  : (branding?.appName || 'AM Business Platform')}
+              </span>
             </span>
-            <span className="text-[10px] font-mono font-bold text-[#F28C28] bg-[#F28C28]/10 px-1.5 py-0.5 rounded-md border border-[#F28C28]/20">
+            <span 
+              className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md border"
+              style={{
+                color: branding?.accentColor || '#F28C28',
+                backgroundColor: `${branding?.accentColor || '#F28C28'}1A`,
+                borderColor: `${branding?.accentColor || '#F28C28'}33`
+              }}
+            >
               v2.8.0
             </span>
           </div>
           <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
-            {isAr 
+            {branding?.tradingName || (isAr 
               ? 'نظام تشغيل المؤسسات وفق معايير IFRS مع التوطين الكامل' 
-              : 'IFRS-Compliant Commercial ERP Engine'}
+              : 'IFRS-Compliant Commercial ERP Engine')}
           </p>
+          {(branding?.showPoweredBy ?? true) && (
+            <div className="text-[9px] text-slate-400 pt-1.5 border-t border-slate-200 dark:border-slate-700/60 space-y-0.5">
+              <div className="font-semibold text-slate-500 dark:text-slate-300">
+                {isAr ? 'مدعوم بواسطة إيه إم • أحمد منير' : 'Powered by AM ERP • Ahmed Mounir'}
+              </div>
+              <div className="text-[8.5px] text-[#F28C28] italic">
+                {isAr ? '«كل قرار ناجح يبدأ برقم صحيح»' : '"Every successful decision begins with an accurate number"'}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </aside>

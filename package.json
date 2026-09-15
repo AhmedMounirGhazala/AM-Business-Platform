@@ -9,7 +9,9 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx scripts/verify_all_phases.ts"
+    "test": "tsx scripts/verify_all_phases.ts && tsx scripts/verify_p0_06_vertical_runtime.ts && tsx scripts/verify_p0_07_onboarding_wizard.ts",
+    "test:p006": "tsx scripts/verify_p0_06_vertical_runtime.ts",
+    "test:p007": "tsx scripts/verify_p0_07_onboarding_wizard.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

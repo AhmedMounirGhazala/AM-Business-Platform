@@ -28,6 +28,7 @@ import {
   SalesRepresentativeTarget,
   SalesRepresentativeActivity
 } from '../../types/sales';
+import { TaxEngine } from '../../engine/taxEngine';
 
 interface MobileSalesTabProps {
   isAr: boolean;
@@ -108,6 +109,12 @@ export const MobileSalesTab: React.FC<MobileSalesTabProps> = ({ isAr, onNotify }
     const lineTotal = prod.price * orderQty;
 
     try {
+      const taxRes = TaxEngine.resolveTaxRate({ countryOrJurisdiction: 'SA' });
+      const lineCalc = TaxEngine.calculateLineTax({
+        quantity: orderQty,
+        unitPrice: prod.price,
+        taxRate: taxRes.taxRate
+      });
       const res = await fetch('/api/v1/sales/sync/queue/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -119,10 +126,19 @@ export const MobileSalesTab: React.FC<MobileSalesTabProps> = ({ isAr, onNotify }
           payload: {
             customerId: cust.id,
             customerName: cust.name,
-            grandTotal: lineTotal * 1.15,
-            subtotal: lineTotal,
-            taxTotal: lineTotal * 0.15,
-            lines: [{ itemSku: prod.sku, itemName: prod.name, quantityOrdered: orderQty, unitPrice: prod.price, lineTotal: lineTotal * 1.15 }]
+            grandTotal: lineCalc.grossAmount,
+            subtotal: lineCalc.taxableAmount,
+            taxTotal: lineCalc.taxAmount,
+            lines: [{
+              itemSku: prod.sku,
+              itemName: prod.name,
+              quantityOrdered: orderQty,
+              unitPrice: prod.price,
+              taxCode: taxRes.taxCode,
+              taxRate: taxRes.taxRate,
+              taxAmount: lineCalc.taxAmount,
+              lineTotal: lineCalc.grossAmount
+            }]
           }
         })
       });

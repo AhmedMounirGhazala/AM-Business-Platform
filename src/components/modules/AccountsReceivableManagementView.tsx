@@ -22,6 +22,7 @@ import {
   ARCreditControlCheck,
   CustomerStatementOfAccount
 } from '../../types/accountsReceivable';
+import { TaxEngine } from '../../engine/taxEngine';
 
 export const AccountsReceivableManagementView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'customers' | 'invoices' | 'receipts' | 'allocations' | 'credit-control' | 'aging' | 'statements' | 'collections' | 'rev-rec' | 'audit'>('overview');
@@ -91,7 +92,7 @@ export const AccountsReceivableManagementView: React.FC = () => {
     type: 'PRICE_ADJUSTMENT',
     reason: 'Commercial volume discount adjustment',
     subtotal: 10000,
-    taxRate: 0.15,
+    taxRate: TaxEngine.resolveTaxRate({ countryOrJurisdiction: 'SA' }).taxRate,
     invoiceId: ''
   });
 
@@ -231,7 +232,12 @@ export const AccountsReceivableManagementView: React.FC = () => {
     e.preventDefault();
     if (!newInvoice.customerId) return alert('Please select a customer');
     try {
-      const lineTotal = newInvoice.unitPrice * newInvoice.quantity;
+      const lineTaxRes = TaxEngine.resolveTaxRate({ countryOrJurisdiction: 'SA' });
+      const lineTaxCalc = TaxEngine.calculateLineTax({
+        quantity: newInvoice.quantity,
+        unitPrice: newInvoice.unitPrice,
+        taxRate: lineTaxRes.taxRate
+      });
       await ApiClient.createARSalesInvoice({
         customerId: newInvoice.customerId,
         salesOrderRef: newInvoice.salesOrderRef,
@@ -242,10 +248,11 @@ export const AccountsReceivableManagementView: React.FC = () => {
             itemName: newInvoice.lineItemName,
             quantity: newInvoice.quantity,
             unitPrice: newInvoice.unitPrice,
-            taxRate: 0.15,
+            taxRate: lineTaxRes.taxRate,
+            taxAmount: lineTaxCalc.taxAmount,
             discountRate: 0,
             discountAmount: 0,
-            lineTotal: lineTotal * 1.15
+            lineTotal: lineTaxCalc.grossAmount
           }
         ]
       });
@@ -1524,20 +1531,30 @@ export const AccountsReceivableManagementView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-800 rounded border border-slate-700 text-[11px] text-slate-300 space-y-1">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>{(newInvoice.unitPrice * newInvoice.quantity).toLocaleString()} SAR</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>VAT (15% Standard Rate):</span>
-                  <span>{(newInvoice.unitPrice * newInvoice.quantity * 0.15).toLocaleString()} SAR</span>
-                </div>
-                <div className="flex justify-between font-extrabold text-emerald-400 text-xs pt-1 border-t border-slate-700">
-                  <span>Grand Total (Inc. VAT):</span>
-                  <span>{(newInvoice.unitPrice * newInvoice.quantity * 1.15).toLocaleString()} SAR</span>
-                </div>
-              </div>
+              {(() => {
+                const taxRes = TaxEngine.resolveTaxRate({ countryOrJurisdiction: 'SA' });
+                const lineCalc = TaxEngine.calculateLineTax({
+                  quantity: newInvoice.quantity,
+                  unitPrice: newInvoice.unitPrice,
+                  taxRate: taxRes.taxRate
+                });
+                return (
+                  <div className="p-3 bg-slate-800 rounded border border-slate-700 text-[11px] text-slate-300 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span>{lineCalc.taxableAmount.toLocaleString()} SAR</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>VAT ({Math.round(taxRes.taxRate * 100)}% Standard Rate):</span>
+                      <span>{lineCalc.taxAmount.toLocaleString()} SAR</span>
+                    </div>
+                    <div className="flex justify-between font-extrabold text-emerald-400 text-xs pt-1 border-t border-slate-700">
+                      <span>Grand Total (Inc. VAT):</span>
+                      <span>{lineCalc.grossAmount.toLocaleString()} SAR</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
                 <button type="button" onClick={() => setShowNewInvoiceModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded font-semibold">Cancel</button>

@@ -58,9 +58,10 @@ import { BarcodeParserEngine } from '../../engine/barcodeParserEngine';
 import { PosHardwareHub } from './PosHardwareHub';
 import { CustomerDisplaySyncService } from '../../services/customerDisplaySyncService';
 import { CustomerFacingDisplayView } from './CustomerFacingDisplayView';
+import { TaxEngine } from '../../engine/taxEngine';
 
 export const PosView: React.FC = () => {
-  const { lang, activeCompany } = usePlatform();
+  const { lang, activeCompany, branding } = usePlatform();
   const isAr = lang === 'ar';
 
   const [activeTab, setActiveTab] = useState<'terminal' | 'hardware' | 'registers' | 'sessions' | 'returns' | 'shiftClosing' | 'offlineSync' | 'customerDisplay'>('terminal');
@@ -242,23 +243,43 @@ export const PosView: React.FC = () => {
     const uom = overrideUom || product.uom || 'UNIT';
 
     setCart(prev => {
+      const resolvedContext = {
+        tenantId: activeCompany?.tenantId,
+        companyId: activeCompany?.id,
+        countryOrJurisdiction: activeCompany?.countryCode || activeCompany?.country || (activeCompany?.currency === 'EGP' ? 'EG' : 'SA'),
+        taxCategory: (product as any).taxCategory,
+        taxCode: (product as any).taxCode
+      };
+
       // For variable weight items, add as distinct weighed lines with specific weights
       const existing = !product.isWeightItem ? prev.find(i => i.itemSku === product.sku) : undefined;
       if (existing) {
         const newQty = existing.quantity + qtyToAdd;
-        const sub = newQty * existing.unitPrice;
-        const tax = sub * existing.taxRate;
+        const lineCalc = TaxEngine.calculateLineTax({
+          sku: existing.itemSku,
+          quantity: newQty,
+          unitPrice: existing.unitPrice,
+          taxRate: existing.taxRate,
+          taxCode: existing.taxCode,
+          taxCategory: existing.taxCategory
+        }, resolvedContext);
+
         return prev.map(i => i.itemSku === product.sku ? {
           ...i,
           quantity: newQty,
-          taxAmount: tax,
-          lineTotal: sub + tax
+          taxAmount: lineCalc.taxAmount,
+          lineTotal: lineCalc.total
         } : i);
       }
 
-      const taxRate = 0.15;
-      const sub = qtyToAdd * unitPrice;
-      const taxAmount = sub * taxRate;
+      const lineCalc = TaxEngine.calculateLineTax({
+        sku: product.sku,
+        quantity: qtyToAdd,
+        unitPrice,
+        taxRate: (product as any).taxRate,
+        taxCode: (product as any).taxCode,
+        taxCategory: (product as any).taxCategory
+      }, resolvedContext);
 
       return [...prev, {
         id: `line-${product.sku}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -270,11 +291,11 @@ export const PosView: React.FC = () => {
         quantity: qtyToAdd,
         unitPrice,
         originalUnitPrice: unitPrice,
-        discountAmount: 0,
+        discountAmount: lineCalc.discountAmount,
         discountPercentage: 0,
-        taxRate,
-        taxAmount,
-        lineTotal: sub + taxAmount
+        taxRate: lineCalc.taxRate,
+        taxAmount: lineCalc.taxAmount,
+        lineTotal: lineCalc.total
       }];
     });
   };
@@ -452,13 +473,18 @@ export const PosView: React.FC = () => {
     setCart(prev => prev.map(i => {
       if (i.itemSku === sku) {
         const newQty = Math.max(1, i.quantity + delta);
-        const sub = (newQty * i.unitPrice) - (i.discountAmount || 0);
-        const tax = sub * i.taxRate;
+        const lineCalc = TaxEngine.calculateLineTax({
+          quantity: newQty,
+          unitPrice: i.unitPrice,
+          discountAmount: i.discountAmount || 0,
+          taxRate: i.taxRate,
+          isTaxInclusive: (i as any).isTaxInclusive || false
+        });
         return {
           ...i,
           quantity: newQty,
-          taxAmount: tax,
-          lineTotal: sub + tax
+          taxAmount: lineCalc.taxAmount,
+          lineTotal: lineCalc.grossAmount
         };
       }
       return i;
@@ -513,7 +539,7 @@ export const PosView: React.FC = () => {
     const changeDue = Math.max(0, totalTendered - cartGrandTotal);
 
     syncService.broadcast({
-      companyName: activeCompany?.name || 'AM Business Platform Enterprise',
+      companyName: branding?.tradingName || branding?.appName || activeCompany?.name || 'AM Business Platform Enterprise',
       branchName: selectedRegister ? `${selectedRegister.name} (${selectedRegister.code})` : 'Main Retail Flagship',
       terminalCode: selectedRegister?.code || 'REG-01',
       cashierName: activeShift?.cashierName || 'Ahmed Mounir',
@@ -524,7 +550,7 @@ export const PosView: React.FC = () => {
       subtotal: cartSubtotal,
       discountTotal: cartDiscount,
       taxAmount: cartTax,
-      taxRate: 0.15,
+      taxRate: cartSubtotal > 0 ? Number((cartTax / Math.max(1, cartSubtotal - cartDiscount)).toFixed(4)) : TaxEngine.resolveTaxRate({ countryOrJurisdiction: activeCompany?.countryCode || 'SA' }).taxRate,
       grandTotal: cartGrandTotal,
       tendered: totalTendered,
       changeDue,
@@ -625,7 +651,7 @@ export const PosView: React.FC = () => {
         HardwareManager.getInstance().printReceipt({
           receiptNumber: receipt.receiptNumber,
           timestamp: receipt.createdAt || new Date().toLocaleString(),
-          companyName: activeCompany?.name || 'AM Business Platform Enterprise',
+          companyName: branding?.tradingName || branding?.appName || activeCompany?.name || 'AM Business Platform Enterprise',
           branchName: 'Main Retail Flagship - Counter 01',
           vatNumber: '300012345600003',
           cashierName: receipt.cashierName || 'Ahmed Mounir',
@@ -639,10 +665,11 @@ export const PosView: React.FC = () => {
           })),
           subtotal: receipt.subtotal,
           taxTotal: receipt.taxTotal,
-          taxRatePercent: 15,
+          taxRatePercent: receipt.subtotal > 0 && receipt.taxTotal ? Math.round((receipt.taxTotal / receipt.subtotal) * 100) : Math.round(TaxEngine.resolveTaxRate({ countryOrJurisdiction: activeCompany?.countryCode || 'SA' }).taxRate * 100),
           grandTotal: receipt.grandTotal,
           payments: (receipt.payments || []).map((p: any) => ({ method: p.method, amount: p.amount })),
-          changeGiven: receipt.changeGiven
+          changeGiven: receipt.changeGiven,
+          footerMessage: branding?.invoiceFooterText || 'Thank you for your business!'
         });
 
         if (receipt.payments?.some((p: any) => p.method === 'CASH')) {
@@ -655,9 +682,28 @@ export const PosView: React.FC = () => {
 
     if (isOfflineMode) {
       try {
-        const grandTotal = cartGrandTotal;
-        const subtotal = grandTotal / 1.15;
-        const taxTotal = grandTotal - subtotal;
+        const offlineCalc = TaxEngine.calculateDocumentTaxes(
+          cart.map(l => ({
+            id: l.id,
+            sku: l.itemSku,
+            quantity: l.quantity,
+            unitPrice: l.originalUnitPrice || l.unitPrice,
+            discountPercent: l.discountPercentage || 0,
+            taxRate: l.taxRate,
+            taxCode: l.taxCode,
+            taxCategory: l.taxCategory
+          })),
+          undefined,
+          undefined,
+          0,
+          {
+            companyId: activeCompany?.id || 'comp-001',
+            countryOrJurisdiction: activeCompany?.countryCode || activeCompany?.country || (activeCompany?.currency === 'EGP' ? 'EG' : 'SA')
+          }
+        );
+        const grandTotal = offlineCalc.grandTotal;
+        const subtotal = offlineCalc.subtotal;
+        const taxTotal = offlineCalc.taxTotal;
         const offlineResult = await OfflinePosManager.getInstance().recordOfflineSale({
           deviceId: selectedRegister?.code || 'REG-01-MAIN',
           userId: 'usr-001',
@@ -713,9 +759,28 @@ export const PosView: React.FC = () => {
     } catch (err) {
       // Auto-fallback to offline IndexedDB
       try {
-        const grandTotal = cartGrandTotal;
-        const subtotal = grandTotal / 1.15;
-        const taxTotal = grandTotal - subtotal;
+        const offlineCalc = TaxEngine.calculateDocumentTaxes(
+          cart.map(l => ({
+            id: l.id,
+            sku: l.itemSku,
+            quantity: l.quantity,
+            unitPrice: l.originalUnitPrice || l.unitPrice,
+            discountPercent: l.discountPercentage || 0,
+            taxRate: l.taxRate,
+            taxCode: l.taxCode,
+            taxCategory: l.taxCategory
+          })),
+          undefined,
+          undefined,
+          0,
+          {
+            companyId: activeCompany?.id || 'comp-001',
+            countryOrJurisdiction: activeCompany?.countryCode || activeCompany?.country || (activeCompany?.currency === 'EGP' ? 'EG' : 'SA')
+          }
+        );
+        const grandTotal = offlineCalc.grandTotal;
+        const subtotal = offlineCalc.subtotal;
+        const taxTotal = offlineCalc.taxTotal;
         const offlineResult = await OfflinePosManager.getInstance().recordOfflineSale({
           deviceId: selectedRegister?.code || 'REG-01-MAIN',
           userId: 'usr-001',
@@ -842,6 +907,17 @@ export const PosView: React.FC = () => {
 
   // Process POS Return
   const handleProcessReturn = async () => {
+    const returnTaxRes = TaxEngine.resolveTaxRate({
+      tenantId: activeCompany?.tenantId || 'ten-001',
+      companyId: activeCompany?.id || 'comp-001',
+      countryOrJurisdiction: activeCompany?.countryCode || 'SA'
+    });
+    const returnLineCalc = TaxEngine.calculateLineTax({
+      quantity: returnQty,
+      unitPrice: 850,
+      taxRate: returnTaxRes.taxRate
+    });
+
     if (isOfflineMode) {
       try {
         const offlineRes = await OfflinePosManager.getInstance().recordOfflineReturn({
@@ -858,13 +934,15 @@ export const PosView: React.FC = () => {
               itemName: 'Industrial 2D Barcode Scanner (Bluetooth)',
               quantityReturned: returnQty,
               unitPrice: 850,
-              refundAmount: returnQty * 850 * 1.15,
+              taxRate: returnTaxRes.taxRate,
+              taxAmount: returnLineCalc.taxAmount,
+              refundAmount: returnLineCalc.grossAmount,
               returnReasonText: returnReason,
               restockWarehouseId: 'wh-001',
               condition: returnCondition
             }
           ],
-          refundGrandTotal: returnQty * 850 * 1.15,
+          refundGrandTotal: returnLineCalc.grossAmount,
           refundMethod: 'CASH'
         });
         setIsReturnModalOpen(false);
@@ -889,7 +967,9 @@ export const PosView: React.FC = () => {
               itemName: 'Industrial 2D Barcode Scanner (Bluetooth)',
               quantityReturned: returnQty,
               unitPrice: 850,
-              refundAmount: returnQty * 850 * 1.15,
+              taxRate: returnTaxRes.taxRate,
+              taxAmount: returnLineCalc.taxAmount,
+              refundAmount: returnLineCalc.grossAmount,
               returnReasonText: returnReason,
               restockWarehouseId: 'wh-001',
               condition: returnCondition
@@ -1263,7 +1343,7 @@ export const PosView: React.FC = () => {
                           {isAr ? item.itemNameAr : item.itemName}
                         </div>
                         <div className="text-[10px] font-mono text-slate-400">
-                          {item.unitPrice.toLocaleString()} SAR / unit (VAT 15%)
+                          {item.unitPrice.toLocaleString()} {activeCompany?.currency || 'SAR'} / {item.uom || 'unit'} (VAT {Math.round(item.taxRate * 100)}%)
                         </div>
                       </div>
 
@@ -1299,8 +1379,8 @@ export const PosView: React.FC = () => {
                   <span>{cartSubtotal.toLocaleString()} SAR</span>
                 </div>
                 <div className="flex justify-between text-slate-500 font-mono">
-                  <span>VAT (15%)</span>
-                  <span>{cartTax.toLocaleString()} SAR</span>
+                  <span>VAT ({cartSubtotal > 0 && cartTax > 0 ? Math.round((cartTax / Math.max(1, cartSubtotal - cartDiscount)) * 100) : 0}%)</span>
+                  <span>{cartTax.toLocaleString()} {activeCompany?.currency || 'SAR'}</span>
                 </div>
                 <div className="flex justify-between text-base font-black text-slate-900 dark:text-white border-t border-slate-100 dark:border-slate-800 pt-2 font-mono">
                   <span>Total Payable</span>
@@ -1694,9 +1774,9 @@ export const PosView: React.FC = () => {
             <div className="text-xs text-slate-500">Receipt #{completedReceipt.receiptNumber}</div>
 
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-left text-[11px] space-y-1">
-              <div className="flex justify-between"><span>Grand Total:</span><span className="font-bold">{completedReceipt.grandTotal.toLocaleString()} SAR</span></div>
-              <div className="flex justify-between"><span>VAT (15%):</span><span>{completedReceipt.taxTotal.toLocaleString()} SAR</span></div>
-              <div className="flex justify-between"><span>Change Given:</span><span>{completedReceipt.changeGiven.toLocaleString()} SAR</span></div>
+              <div className="flex justify-between"><span>Grand Total:</span><span className="font-bold">{completedReceipt.grandTotal.toLocaleString()} {activeCompany?.currency || 'SAR'}</span></div>
+              <div className="flex justify-between"><span>VAT ({completedReceipt.subtotal > 0 && completedReceipt.taxTotal > 0 ? Math.round((completedReceipt.taxTotal / completedReceipt.subtotal) * 100) : 0}%):</span><span>{completedReceipt.taxTotal.toLocaleString()} {activeCompany?.currency || 'SAR'}</span></div>
+              <div className="flex justify-between"><span>Change Given:</span><span>{completedReceipt.changeGiven.toLocaleString()} {activeCompany?.currency || 'SAR'}</span></div>
             </div>
 
             <div className="flex justify-center p-3 bg-white rounded-xl border border-slate-200">

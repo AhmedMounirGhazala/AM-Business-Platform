@@ -263,6 +263,9 @@ export interface POSReceiptLine {
   appliedPromoId?: string;
   taxRate: number;
   taxAmount: number;
+  taxCode?: string;
+  taxCategory?: string;
+  isTaxInclusive?: boolean;
   lineTotal: number;
   costPrice?: number;
 }
@@ -504,6 +507,8 @@ export interface SalesReturnLine {
   returnReasonText: string;
   restockWarehouseId: string;
   condition: 'RESTOCKABLE_NEW' | 'DAMAGED_SCRAP' | 'NEEDS_INSPECTION';
+  taxRate?: number;
+  taxAmount?: number;
 }
 
 export interface SalesReturn {
@@ -846,7 +851,15 @@ export type IndustryProfileType =
   | 'RESTAURANT'
   | 'SERVICE_CENTER'
   | 'CONSTRUCTION'
-  | 'IMPORT_EXPORT';
+  | 'IMPORT_EXPORT'
+  | 'COMMERCIAL_DISTRIBUTION'
+  | 'RESTAURANT_FNB'
+  | 'RETAIL_MOBILE_PHONES'
+  | 'RETAIL_WOMENS_CLOTHING'
+  | 'RETAIL_CHILDRENS_CLOTHING'
+  | 'MFG_WOMENS_APPAREL'
+  | 'MFG_MENS_APPAREL'
+  | 'MFG_CHILDRENS_APPAREL';
 
 export type IndustryVerticalType = IndustryProfileType;
 export type IndustryVertical = IndustryProfileType;

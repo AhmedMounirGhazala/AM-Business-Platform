@@ -28,6 +28,8 @@ import { PlatformIntegrationView } from './components/modules/PlatformIntegratio
 import { MasterDataWorkspaceView } from './components/modules/MasterDataWorkspaceView';
 import { ManufacturingManagementView } from './components/modules/ManufacturingManagementView';
 import { CustomerFacingDisplayView } from './components/modules/CustomerFacingDisplayView';
+import { EnterpriseOnboardingWizard } from './components/modules/EnterpriseOnboardingWizard';
+import { BrandingSettingsView } from './components/modules/BrandingSettingsView';
 import { ComingSoonView } from './components/modules/ComingSoonView';
 
 const MainLayout: React.FC = () => {
@@ -49,6 +51,10 @@ const MainLayout: React.FC = () => {
     switch (activeModule) {
       case 'dashboard':
         return <ExecutiveDashboard />;
+      case 'onboarding_wizard':
+        return <EnterpriseOnboardingWizard />;
+      case 'branding':
+        return <BrandingSettingsView />;
       case 'platform_readiness':
         return <PlatformIntegrationView />;
       case 'master_data':

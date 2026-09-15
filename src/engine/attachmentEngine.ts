@@ -6,6 +6,8 @@
 import { DocumentAttachment, FileVersion } from '../types';
 
 export class AttachmentEngine {
+  private static mutationListener: ((attachment: DocumentAttachment) => void) | null = null;
+
   private static attachmentsStore: DocumentAttachment[] = [
     {
       id: 'att-101',
@@ -31,6 +33,20 @@ export class AttachmentEngine {
       uploadedAt: '2026-08-01T10:00:00Z'
     }
   ];
+
+  static setMutationListener(listener: (attachment: DocumentAttachment) => void): void {
+    this.mutationListener = listener;
+  }
+
+  static hydrate(attachments: DocumentAttachment[]): void {
+    if (attachments && attachments.length > 0) {
+      this.attachmentsStore = [...attachments];
+    }
+  }
+
+  static exportState(): DocumentAttachment[] {
+    return [...this.attachmentsStore];
+  }
 
   static getEntityAttachments(tenantId: string, entityType: string, entityId: string): DocumentAttachment[] {
     return this.attachmentsStore.filter(
@@ -71,6 +87,7 @@ export class AttachmentEngine {
       existing.fileUrl = resolvedUrl;
       existing.uploadedBy = uploadedBy;
       existing.uploadedAt = now;
+      this.mutationListener?.(existing);
       return existing;
     }
 
@@ -99,6 +116,7 @@ export class AttachmentEngine {
     };
 
     this.attachmentsStore.unshift(newAttachment);
+    this.mutationListener?.(newAttachment);
     return newAttachment;
   }
 }

@@ -374,9 +374,19 @@ export const CustomerFacingDisplayView: React.FC<CustomerFacingDisplayViewProps>
       </main>
 
       {/* Footer Branding Bar */}
-      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-3 px-6 text-center text-xs text-slate-500 font-mono flex items-center justify-between">
-        <span>AM Business Platform — Enterprise Retail Engine</span>
-        <span>Customer Display Terminal • Read-Only Mode</span>
+      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-3 px-6 text-xs text-slate-500 font-mono flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-[#0B1F3A] dark:text-slate-200">
+            {isArabic ? 'إيه إم لتخطيط موارد المؤسسات' : 'AM ERP Engine'}
+          </span>
+          <span>•</span>
+          <span className="text-[#F28C28] font-sans font-semibold">
+            {isArabic ? '«كل قرار ناجح يبدأ برقم صحيح»' : '"Every successful decision begins with an accurate number"'}
+          </span>
+        </div>
+        <div className="text-[11px] text-slate-400">
+          {isArabic ? 'محطة شاشة العميل • وضع العرض فقط • أحمد منير' : 'Customer Display Terminal • Read-Only • Ahmed Mounir'}
+        </div>
       </footer>
     </div>
   );

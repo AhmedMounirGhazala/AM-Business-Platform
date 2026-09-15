@@ -3,8 +3,8 @@
  * Handles Multi-Tenant switching, Language (AR/EN), RTL, Themes, & Module Navigation
  */
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Company, Tenant, User, Warehouse } from '../types';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { Company, Tenant, User, Warehouse, TenantBranding, AMPlatformIdentity, APPROVED_AM_IDENTITY } from '../types';
 import { ApiClient } from '../services/apiClient';
 
 export type Language = 'ar' | 'en';
@@ -40,7 +40,9 @@ export type ModuleView =
   | 'service_management'
   | 'quality_management'
   | 'production_planning'
-  | 'ecommerce';
+  | 'ecommerce'
+  | 'onboarding_wizard'
+  | 'branding';
 
 interface PlatformContextType {
   lang: Language;
@@ -65,6 +67,12 @@ interface PlatformContextType {
   setActiveWarehouse: (w: Warehouse) => void;
   
   currentUser: User | null;
+
+  // Tenant Identity & Branding Runtime (P0-08)
+  branding: TenantBranding | null;
+  refreshBranding: () => Promise<void>;
+  isBrandingLoading: boolean;
+  platformIdentity: AMPlatformIdentity;
   
   // State Triggers
   pendingApprovalsCount: number;
@@ -114,21 +122,135 @@ interface PlatformContextType {
 
 const PlatformContext = createContext<PlatformContextType | undefined>(undefined);
 
+// Safe baseline enterprise defaults to ensure seamless resilience against cold boots
+const DEFAULT_USER: User = {
+  id: 'usr-001',
+  tenantId: 'ten-001',
+  companyId: 'comp-001',
+  branchId: 'br-001',
+  name: 'Ahmed Mounir',
+  email: 'a.mounir369@gmail.com',
+  role: 'Super Admin',
+  active: true,
+  createdAt: '2026-01-01T08:00:00Z',
+  permissions: [{ module: 'all', actions: ['create', 'read', 'update', 'delete', 'approve', 'export'] }]
+};
+
+const DEFAULT_TENANT: Tenant = {
+  id: 'ten-001',
+  name: 'AM Holding Group',
+  code: 'AMHG',
+  edition: 'Enterprise',
+  ownerEmail: 'a.mounir369@gmail.com',
+  active: true,
+  createdAt: '2026-01-01T08:00:00Z'
+};
+
+const DEFAULT_COMPANY: Company = {
+  id: 'comp-001',
+  tenantId: 'ten-001',
+  name: 'AM Tech Solutions - HQ',
+  nameAr: 'مجموعة إيه إم للحلول التقنية - المقر الرئيسي',
+  code: 'AMHQ',
+  taxNumber: '310984728100003',
+  currency: 'SAR',
+  country: 'Saudi Arabia',
+  countryCode: 'SA',
+  state: 'Riyadh Province',
+  city: 'Riyadh',
+  taxSystemId: 'tax-sys-sa-vat',
+  taxSystemName: 'Saudi Arabia VAT (15% ZATCA Phase 2)',
+  taxRate: 15,
+  timezone: 'Asia/Riyadh',
+  dateFormat: 'YYYY-MM-DD',
+  numberFormat: '1,234.56',
+  language: 'ar',
+  fiscalYearStart: '01-01',
+  address: 'King Fahd Road, Olaya District, Riyadh, KSA',
+  phone: '+966 11 482 9100',
+  email: 'info@amtech.sa',
+  website: 'https://amtech.sa'
+};
+
 export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lang, setLangState] = useState<Language>('en');
   const [theme, setTheme] = useState<Theme>('light');
   const [activeModule, setActiveModuleState] = useState<ModuleView>('dashboard');
 
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [activeTenant, setActiveTenant] = useState<Tenant | null>(null);
+  const [tenants, setTenants] = useState<Tenant[]>([DEFAULT_TENANT]);
+  const [activeTenant, setActiveTenant] = useState<Tenant | null>(DEFAULT_TENANT);
 
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [activeCompany, setActiveCompany] = useState<Company | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([DEFAULT_COMPANY]);
+  const [activeCompany, setActiveCompany] = useState<Company | null>(DEFAULT_COMPANY);
 
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [activeWarehouse, setActiveWarehouse] = useState<Warehouse | null>(null);
 
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(DEFAULT_USER);
+
+  // Tenant Identity & Branding Runtime (P0-08)
+  const [branding, setBranding] = useState<TenantBranding | null>(null);
+  const [isBrandingLoading, setIsBrandingLoading] = useState<boolean>(false);
+
+  const refreshBranding = useCallback(async () => {
+    const targetTenantId = activeTenant?.id || 'ten-001';
+    setIsBrandingLoading(true);
+    try {
+      const res = await ApiClient.getBranding(targetTenantId, activeCompany?.id);
+      if (res && res.branding) {
+        setBranding(res.branding);
+      }
+    } catch (err) {
+      console.warn('Failed to refresh tenant branding:', err);
+    } finally {
+      setIsBrandingLoading(false);
+    }
+  }, [activeTenant?.id, activeCompany?.id]);
+
+  // Apply dynamic CSS variables & runtime tokens
+  useEffect(() => {
+    if (!branding) return;
+    const root = document.documentElement;
+    root.style.setProperty('--brand-primary', branding.primaryColor);
+    root.style.setProperty('--brand-secondary', branding.secondaryColor);
+    root.style.setProperty('--brand-accent', branding.accentColor);
+    root.style.setProperty('--brand-surface', branding.surfaceColor || '#FFFFFF');
+    root.style.setProperty('--brand-text', branding.textColor || '#0F172A');
+    root.style.setProperty('--brand-font', branding.fontFamily);
+    const radiusMap: Record<string, string> = {
+      none: '0px',
+      sm: '2px',
+      md: '6px',
+      lg: '8px',
+      xl: '12px',
+      full: '9999px'
+    };
+    root.style.setProperty('--brand-radius', radiusMap[branding.borderRadius] || '8px');
+
+    if (branding.appName) {
+      document.title = `${branding.appName} | Enterprise Operating Platform`;
+    }
+
+    if (branding.faviconUrl) {
+      try {
+        let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+        if (!link) {
+          link = document.createElement('link');
+          link.type = 'image/x-icon';
+          link.rel = 'shortcut icon';
+          document.getElementsByTagName('head')[0].appendChild(link);
+        }
+        link.href = branding.faviconUrl;
+      } catch {}
+    }
+  }, [branding]);
+
+  // Re-fetch branding when tenant or company changes
+  useEffect(() => {
+    if (activeTenant?.id) {
+      refreshBranding();
+    }
+  }, [activeTenant?.id, activeCompany?.id, refreshBranding]);
 
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0);
   const [anomaliesCount, setAnomaliesCount] = useState<number>(0);
@@ -326,11 +448,13 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Fetch initial Context Data
+  // Fetch initial Context Data with automatic resilience against container warmups
   useEffect(() => {
-    async function initPlatform() {
+    let isCancelled = false;
+
+    async function initPlatform(attempt = 0) {
       try {
-        const [authRes, tenantsRes, compRes, whRes, approvalsRes, anomaliesRes] = await Promise.all([
+        const [authSettled, tenantsSettled, compSettled, whSettled, approvalsSettled, anomaliesSettled] = await Promise.allSettled([
           ApiClient.getAuthMe(),
           ApiClient.getTenants(),
           ApiClient.getCompanies(),
@@ -339,26 +463,56 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           ApiClient.getAnomalies()
         ]);
 
-        setCurrentUser(authRes.user);
-        setTenants(tenantsRes);
-        setActiveTenant(authRes.tenant || tenantsRes[0] || null);
+        if (isCancelled) return;
 
-        setCompanies(compRes);
-        setActiveCompany(authRes.company || compRes[0] || null);
+        if (authSettled.status === 'fulfilled') {
+          const authRes = authSettled.value;
+          if (authRes.user) setCurrentUser(authRes.user);
+          if (authRes.tenant) setActiveTenant(authRes.tenant);
+          if (authRes.company) setActiveCompany(authRes.company);
+        }
 
-        setWarehouses(whRes);
-        setActiveWarehouse(whRes[0] || null);
+        if (tenantsSettled.status === 'fulfilled' && tenantsSettled.value.length > 0) {
+          setTenants(tenantsSettled.value);
+        }
 
-        const pending = approvalsRes.filter(a => a.status === 'Pending').length;
-        setPendingApprovalsCount(pending);
+        if (compSettled.status === 'fulfilled' && compSettled.value.length > 0) {
+          setCompanies(compSettled.value);
+        }
 
-        setAnomaliesCount(anomaliesRes.length);
+        if (whSettled.status === 'fulfilled' && whSettled.value.length > 0) {
+          setWarehouses(whSettled.value);
+          setActiveWarehouse(whSettled.value[0] || null);
+        }
+
+        if (approvalsSettled.status === 'fulfilled') {
+          const pending = approvalsSettled.value.filter(a => a.status === 'Pending').length;
+          setPendingApprovalsCount(pending);
+        }
+
+        if (anomaliesSettled.status === 'fulfilled') {
+          setAnomaliesCount(anomaliesSettled.value.length);
+        }
+
+        // If core auth or tenants failed due to cold boot and we have retries left, retry after short backoff
+        if (attempt < 3 && (authSettled.status === 'rejected' || tenantsSettled.status === 'rejected')) {
+          setTimeout(() => {
+            if (!isCancelled) initPlatform(attempt + 1);
+          }, 800 * (attempt + 1));
+        }
       } catch (err) {
-        console.error('Platform initialization failed:', err);
+        if (attempt < 3) {
+          setTimeout(() => {
+            if (!isCancelled) initPlatform(attempt + 1);
+          }, 800 * (attempt + 1));
+        } else {
+          console.warn('Platform initialization notice: Running with resilient default enterprise state.', err);
+        }
       }
     }
 
     initPlatform();
+    return () => { isCancelled = true; };
   }, [reloadTrigger]);
 
   return (
@@ -381,6 +535,10 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         activeWarehouse,
         setActiveWarehouse,
         currentUser,
+        branding,
+        refreshBranding,
+        isBrandingLoading,
+        platformIdentity: APPROVED_AM_IDENTITY,
         pendingApprovalsCount,
         anomaliesCount,
         reloadTrigger,

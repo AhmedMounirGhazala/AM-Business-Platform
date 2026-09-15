@@ -59,6 +59,7 @@ import { IndustryConfigTab } from '../sales/IndustryConfigTab';
 import { ComplianceAdapterTab } from '../sales/ComplianceAdapterTab';
 import { UniversalExportTab } from '../sales/UniversalExportTab';
 import { HardeningTestSuiteTab } from '../sales/HardeningTestSuiteTab';
+import { TaxEngine } from '../../engine/taxEngine';
 
 export const EnterpriseSalesWorkspaceView: React.FC = () => {
   const { lang, activeCompany } = usePlatform();
@@ -235,9 +236,20 @@ export const EnterpriseSalesWorkspaceView: React.FC = () => {
 
   // Handle Create New Quotation
   const handleCreateQuotation = async () => {
-    const subtotal = newCustQty * newCustPrice;
-    const tax = subtotal * 0.15;
-    const total = subtotal + tax;
+    const taxRes = TaxEngine.resolveTaxRate({
+      tenantId: activeCompany?.tenantId || 'ten-001',
+      companyId: activeCompany?.id || 'comp-001',
+      countryOrJurisdiction: activeCompany?.countryCode || 'SA'
+    });
+    const lineCalc = TaxEngine.calculateLineTax({
+      quantity: newCustQty,
+      unitPrice: newCustPrice,
+      discountAmount: 0,
+      taxRate: taxRes.taxRate
+    });
+    const subtotal = lineCalc.taxableAmount;
+    const tax = lineCalc.taxAmount;
+    const total = lineCalc.grossAmount;
 
     try {
       const res = await fetch('/api/v1/sales/quotations', {
@@ -262,8 +274,8 @@ export const EnterpriseSalesWorkspaceView: React.FC = () => {
               unitPrice: newCustPrice,
               discountRate: 0,
               discountAmount: 0,
-              taxCode: 'VAT15',
-              taxRate: 0.15,
+              taxCode: taxRes.taxCode,
+              taxRate: taxRes.taxRate,
               taxAmount: tax,
               lineTotal: total,
               availableStock: 50
@@ -1199,20 +1211,32 @@ export const EnterpriseSalesWorkspaceView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 font-mono space-y-1">
-                <div className="flex justify-between text-slate-500">
-                  <span>Subtotal:</span>
-                  <span>{(newCustQty * newCustPrice).toLocaleString()} SAR</span>
-                </div>
-                <div className="flex justify-between text-slate-500">
-                  <span>VAT (15%):</span>
-                  <span>{(newCustQty * newCustPrice * 0.15).toLocaleString()} SAR</span>
-                </div>
-                <div className="flex justify-between font-bold text-slate-900 dark:text-white pt-1 border-t border-slate-200 dark:border-slate-700">
-                  <span>Grand Total:</span>
-                  <span className="text-emerald-600">{(newCustQty * newCustPrice * 1.15).toLocaleString()} SAR</span>
-                </div>
-              </div>
+              {(() => {
+                const taxRes = TaxEngine.resolveTaxRate({
+                  countryOrJurisdiction: activeCompany?.countryCode || 'SA'
+                });
+                const lineCalc = TaxEngine.calculateLineTax({
+                  quantity: newCustQty,
+                  unitPrice: newCustPrice,
+                  taxRate: taxRes.taxRate
+                });
+                return (
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 font-mono space-y-1">
+                    <div className="flex justify-between text-slate-500">
+                      <span>Subtotal:</span>
+                      <span>{lineCalc.taxableAmount.toLocaleString()} SAR</span>
+                    </div>
+                    <div className="flex justify-between text-slate-500">
+                      <span>VAT ({Math.round(taxRes.taxRate * 100)}%):</span>
+                      <span>{lineCalc.taxAmount.toLocaleString()} SAR</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-slate-900 dark:text-white pt-1 border-t border-slate-200 dark:border-slate-700">
+                      <span>Grand Total:</span>
+                      <span className="text-emerald-600">{lineCalc.grossAmount.toLocaleString()} SAR</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">

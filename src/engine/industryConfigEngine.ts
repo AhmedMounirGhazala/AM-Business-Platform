@@ -462,6 +462,413 @@ export class IndustryConfigEngine {
   }
 
   /**
+   * Preconfigured profiles for the 8 approved P0-06 pilot industry verticals
+   */
+  static getPilotIndustryProfiles(): IndustryProfileConfig[] {
+    return [
+      {
+        id: 'prof-commercial-distribution',
+        profileType: 'COMMERCIAL_DISTRIBUTION',
+        name: 'Commercial Trading & B2B Distribution',
+        nameAr: 'التجارة العامة والتوزيع بالجملة',
+        description: 'Comprehensive wholesale distribution with delivery routes, van sales, tiered volume pricing, and rep commissions.',
+        descriptionAr: 'توزيع وتجارة الجملة مع خطوط سير، مبيعات سيارات الفان، شرائح الأسعار، وعمولات المناديب.',
+        isPreconfigured: true,
+        isActive: false,
+        posConfig: {
+          enableBarcodeScanner: true,
+          requireVariantSelection: false,
+          enableImeiSerialTracking: false,
+          enableTableManagement: false,
+          enableKitchenDisplaySystem: false,
+          enableWeighingScaleIntegration: false,
+          enableFastCashButtons: true,
+          defaultPaymentMethod: 'CUSTOMER_CREDIT',
+          allowPriceOverride: false,
+          allowNegativeStock: false
+        },
+        salesConfig: {
+          requireCustomerSelection: true,
+          defaultPriceListType: 'WHOLESALE',
+          enableVolumeTierDiscounts: true,
+          enableJobOrderIntegration: false,
+          enableCustomsDeclarationField: false,
+          enableBillOfQuantitiesBOM: false,
+          enableWarrantyTracking: false,
+          maxOrderDiscountThreshold: 15,
+          mandatoryPaymentTerms: true
+        },
+        documentConfig: {
+          orderPrefix: 'SO-DST',
+          invoicePrefix: 'INV-DST',
+          receiptPrefix: 'REC-DST',
+          returnPrefix: 'RET-DST',
+          customFields: [
+            { key: 'deliveryRouteCode', label: 'Route Code', labelAr: 'رمز خط السير', fieldType: 'TEXT', required: true },
+            { key: 'salesRepId', label: 'Sales Rep', labelAr: 'المندوب', fieldType: 'TEXT', required: true }
+          ]
+        },
+        governanceConfig: {
+          supervisorApprovalDiscountPercent: 15,
+          creditLimitBlockPolicy: 'HARD_BLOCK',
+          allowOfflineOperations: true,
+          maxOfflineTransactionAgeHours: 48
+        }
+      },
+      {
+        id: 'prof-restaurant-fnb',
+        profileType: 'RESTAURANT_FNB',
+        name: 'Restaurant, Cafe & Food Services (F&B)',
+        nameAr: 'المطاعم والكافيهات والأغذية والمشروبات',
+        description: 'Table management, KDS order routing, recipe BOMs, automatic ingredient consumption, and waste tracking.',
+        descriptionAr: 'إدارة الطاولات، شاشات المطبخ KDS، بطاقات الوصفات واستهلاك المكونات والهدر.',
+        isPreconfigured: true,
+        isActive: false,
+        posConfig: {
+          enableBarcodeScanner: false,
+          requireVariantSelection: false,
+          enableImeiSerialTracking: false,
+          enableTableManagement: true,
+          enableKitchenDisplaySystem: true,
+          enableWeighingScaleIntegration: true,
+          enableFastCashButtons: true,
+          defaultPaymentMethod: 'CASH',
+          allowPriceOverride: false,
+          allowNegativeStock: false
+        },
+        salesConfig: {
+          requireCustomerSelection: false,
+          defaultPriceListType: 'RETAIL',
+          enableVolumeTierDiscounts: false,
+          enableJobOrderIntegration: false,
+          enableCustomsDeclarationField: false,
+          enableBillOfQuantitiesBOM: true,
+          enableWarrantyTracking: false,
+          maxOrderDiscountThreshold: 10,
+          mandatoryPaymentTerms: false
+        },
+        documentConfig: {
+          orderPrefix: 'KDS',
+          invoicePrefix: 'INV-RES',
+          receiptPrefix: 'REC-RES',
+          returnPrefix: 'RET-RES',
+          customFields: [
+            { key: 'tableNumber', label: 'Table Number', labelAr: 'رقم الطاولة', fieldType: 'TEXT', required: true },
+            { key: 'guestCount', label: 'Guest Count', labelAr: 'عدد الضيوف', fieldType: 'NUMBER', required: true }
+          ]
+        },
+        governanceConfig: {
+          supervisorApprovalDiscountPercent: 10,
+          creditLimitBlockPolicy: 'ALLOW',
+          allowOfflineOperations: true,
+          maxOfflineTransactionAgeHours: 24
+        }
+      },
+      {
+        id: 'prof-retail-mobile-phones',
+        profileType: 'RETAIL_MOBILE_PHONES',
+        name: 'Specialty Retail — Mobile Phones & Electronics',
+        nameAr: 'تجارة التجزئة — الهواتف المحمولة والإلكترونيات',
+        description: 'IMEI/Serial scanning, trade-in inspection/valuation, and repair service job cards.',
+        descriptionAr: 'مسح السيريال والأجهزة IMEI، تقييم واستبدال الأجهزة المستعملة، وبطاقات الصيانة.',
+        isPreconfigured: true,
+        isActive: false,
+        posConfig: {
+          enableBarcodeScanner: true,
+          requireVariantSelection: false,
+          enableImeiSerialTracking: true,
+          enableTableManagement: false,
+          enableKitchenDisplaySystem: false,
+          enableWeighingScaleIntegration: false,
+          enableFastCashButtons: true,
+          defaultPaymentMethod: 'CASH',
+          allowPriceOverride: false,
+          allowNegativeStock: false
+        },
+        salesConfig: {
+          requireCustomerSelection: true,
+          defaultPriceListType: 'RETAIL',
+          enableVolumeTierDiscounts: false,
+          enableJobOrderIntegration: true,
+          enableCustomsDeclarationField: false,
+          enableBillOfQuantitiesBOM: false,
+          enableWarrantyTracking: true,
+          maxOrderDiscountThreshold: 10,
+          mandatoryPaymentTerms: false
+        },
+        documentConfig: {
+          orderPrefix: 'SO-MOB',
+          invoicePrefix: 'INV-MOB',
+          receiptPrefix: 'REC-MOB',
+          returnPrefix: 'RET-MOB',
+          customFields: [
+            { key: 'imei1', label: 'IMEI 1', labelAr: 'رقم السيريال IMEI 1', fieldType: 'TEXT', required: true },
+            { key: 'conditionGrade', label: 'Condition', labelAr: 'الحالة', fieldType: 'SELECT', required: true, options: ['NEW', 'GRADE_A', 'GRADE_B', 'GRADE_C'] }
+          ]
+        },
+        governanceConfig: {
+          supervisorApprovalDiscountPercent: 10,
+          creditLimitBlockPolicy: 'HARD_BLOCK',
+          allowOfflineOperations: true,
+          maxOfflineTransactionAgeHours: 24
+        }
+      },
+      {
+        id: 'prof-retail-womens-clothing',
+        profileType: 'RETAIL_WOMENS_CLOTHING',
+        name: "Fashion Retail — Women's Apparel & Boutique",
+        nameAr: 'تجارة الأزياء — الملابس النسائية والفساتين',
+        description: 'Style x Color x Size variant matrix, fitting room holds, customer reservations, and seasonal markdowns.',
+        descriptionAr: 'مصفوفة الموديل واللون والمقاس، حجز غرف القياس، عربونات العملاء، وأوكازيون المواسم.',
+        isPreconfigured: true,
+        isActive: false,
+        posConfig: {
+          enableBarcodeScanner: true,
+          requireVariantSelection: true,
+          enableImeiSerialTracking: false,
+          enableTableManagement: false,
+          enableKitchenDisplaySystem: false,
+          enableWeighingScaleIntegration: false,
+          enableFastCashButtons: true,
+          defaultPaymentMethod: 'CASH',
+          allowPriceOverride: false,
+          allowNegativeStock: false
+        },
+        salesConfig: {
+          requireCustomerSelection: false,
+          defaultPriceListType: 'RETAIL',
+          enableVolumeTierDiscounts: false,
+          enableJobOrderIntegration: false,
+          enableCustomsDeclarationField: false,
+          enableBillOfQuantitiesBOM: false,
+          enableWarrantyTracking: false,
+          maxOrderDiscountThreshold: 20,
+          mandatoryPaymentTerms: false
+        },
+        documentConfig: {
+          orderPrefix: 'SO-WCL',
+          invoicePrefix: 'INV-WCL',
+          receiptPrefix: 'REC-WCL',
+          returnPrefix: 'RET-WCL',
+          customFields: [
+            { key: 'styleCode', label: 'Style Code', labelAr: 'رمز الموديل', fieldType: 'TEXT', required: true },
+            { key: 'seasonCode', label: 'Season', labelAr: 'الموسم', fieldType: 'TEXT', required: true }
+          ]
+        },
+        governanceConfig: {
+          supervisorApprovalDiscountPercent: 20,
+          creditLimitBlockPolicy: 'HARD_BLOCK',
+          allowOfflineOperations: true,
+          maxOfflineTransactionAgeHours: 24
+        }
+      },
+      {
+        id: 'prof-retail-childrens-clothing',
+        profileType: 'RETAIL_CHILDRENS_CLOTHING',
+        name: "Fashion Retail — Children's Apparel & Babywear",
+        nameAr: 'تجارة الأزياء — ملابس الأطفال والمواليد',
+        description: "Configurable age brackets, safety certification tags, care instructions, and gift receipt issuance.",
+        descriptionAr: 'المقاييس العمرية للأطفال، بطاقات السلامة، تعليمات العناية، وإيصالات الهدايا.',
+        isPreconfigured: true,
+        isActive: false,
+        posConfig: {
+          enableBarcodeScanner: true,
+          requireVariantSelection: true,
+          enableImeiSerialTracking: false,
+          enableTableManagement: false,
+          enableKitchenDisplaySystem: false,
+          enableWeighingScaleIntegration: false,
+          enableFastCashButtons: true,
+          defaultPaymentMethod: 'CASH',
+          allowPriceOverride: false,
+          allowNegativeStock: false
+        },
+        salesConfig: {
+          requireCustomerSelection: false,
+          defaultPriceListType: 'RETAIL',
+          enableVolumeTierDiscounts: false,
+          enableJobOrderIntegration: false,
+          enableCustomsDeclarationField: false,
+          enableBillOfQuantitiesBOM: false,
+          enableWarrantyTracking: false,
+          maxOrderDiscountThreshold: 15,
+          mandatoryPaymentTerms: false
+        },
+        documentConfig: {
+          orderPrefix: 'SO-KCL',
+          invoicePrefix: 'INV-KCL',
+          receiptPrefix: 'REC-KCL',
+          returnPrefix: 'RET-KCL',
+          customFields: [
+            { key: 'ageBracket', label: 'Age Group', labelAr: 'الفئة العمرية', fieldType: 'TEXT', required: true },
+            { key: 'organicCotton', label: 'Organic Certified', labelAr: 'قطن عضوي معتمد', fieldType: 'SELECT', required: false, options: ['YES', 'NO'] }
+          ]
+        },
+        governanceConfig: {
+          supervisorApprovalDiscountPercent: 15,
+          creditLimitBlockPolicy: 'HARD_BLOCK',
+          allowOfflineOperations: true,
+          maxOfflineTransactionAgeHours: 24
+        }
+      },
+      {
+        id: 'prof-mfg-womens-apparel',
+        profileType: 'MFG_WOMENS_APPAREL',
+        name: "Industrial Manufacturing — Women's Apparel",
+        nameAr: 'التصنيع الصناعي — الملابس الجاهزة والنسائية',
+        description: 'Apparel BOM, fabric yield marker planning, cut orders, bundle tickets, piece-rate labor, and QC checkpoints.',
+        descriptionAr: 'بطاقة تصنيع الملابس، تخطيط تعشيق القماش، أوامر القص، بطاقات الحزم، الأجور بالقطعة، ونقاط فحص الجودة.',
+        isPreconfigured: true,
+        isActive: false,
+        posConfig: {
+          enableBarcodeScanner: true,
+          requireVariantSelection: false,
+          enableImeiSerialTracking: false,
+          enableTableManagement: false,
+          enableKitchenDisplaySystem: false,
+          enableWeighingScaleIntegration: false,
+          enableFastCashButtons: false,
+          defaultPaymentMethod: 'CUSTOMER_CREDIT',
+          allowPriceOverride: false,
+          allowNegativeStock: false
+        },
+        salesConfig: {
+          requireCustomerSelection: true,
+          defaultPriceListType: 'WHOLESALE',
+          enableVolumeTierDiscounts: true,
+          enableJobOrderIntegration: true,
+          enableCustomsDeclarationField: false,
+          enableBillOfQuantitiesBOM: true,
+          enableWarrantyTracking: false,
+          maxOrderDiscountThreshold: 15,
+          mandatoryPaymentTerms: true
+        },
+        documentConfig: {
+          orderPrefix: 'CUT-WAP',
+          invoicePrefix: 'INV-WAP',
+          receiptPrefix: 'REC-WAP',
+          returnPrefix: 'RET-WAP',
+          customFields: [
+            { key: 'markerCode', label: 'Marker Code', labelAr: 'رمز التعشيق', fieldType: 'TEXT', required: true },
+            { key: 'fabricYieldPercent', label: 'Fabric Yield %', labelAr: 'نسبة استغلال القماش %', fieldType: 'NUMBER', required: true }
+          ]
+        },
+        governanceConfig: {
+          supervisorApprovalDiscountPercent: 15,
+          creditLimitBlockPolicy: 'HARD_BLOCK',
+          allowOfflineOperations: true,
+          maxOfflineTransactionAgeHours: 48
+        }
+      },
+      {
+        id: 'prof-mfg-mens-apparel',
+        profileType: 'MFG_MENS_APPAREL',
+        name: "Industrial Manufacturing — Men's Tailoring & Suiting",
+        nameAr: 'التصنيع الصناعي — البدلات والملابس الرجالية',
+        description: 'Made-to-measure tailoring specifications, fit models, fabric shrinkage allowances, and canvas suiting.',
+        descriptionAr: 'مواصفات التفصيل الرجالي، درجات القص والقياسات، سماحية انكماش القماش، وحشوات البدلات.',
+        isPreconfigured: true,
+        isActive: false,
+        posConfig: {
+          enableBarcodeScanner: true,
+          requireVariantSelection: false,
+          enableImeiSerialTracking: false,
+          enableTableManagement: false,
+          enableKitchenDisplaySystem: false,
+          enableWeighingScaleIntegration: false,
+          enableFastCashButtons: false,
+          defaultPaymentMethod: 'CUSTOMER_CREDIT',
+          allowPriceOverride: false,
+          allowNegativeStock: false
+        },
+        salesConfig: {
+          requireCustomerSelection: true,
+          defaultPriceListType: 'WHOLESALE',
+          enableVolumeTierDiscounts: true,
+          enableJobOrderIntegration: true,
+          enableCustomsDeclarationField: false,
+          enableBillOfQuantitiesBOM: true,
+          enableWarrantyTracking: false,
+          maxOrderDiscountThreshold: 15,
+          mandatoryPaymentTerms: true
+        },
+        documentConfig: {
+          orderPrefix: 'CUT-MAP',
+          invoicePrefix: 'INV-MAP',
+          receiptPrefix: 'REC-MAP',
+          returnPrefix: 'RET-MAP',
+          customFields: [
+            { key: 'fitType', label: 'Fit Style', labelAr: 'القصة المعتمدة', fieldType: 'SELECT', required: true, options: ['SLIM', 'REGULAR', 'TAILORED'] },
+            { key: 'shrinkagePercent', label: 'Shrinkage %', labelAr: 'نسبة الانكماش %', fieldType: 'NUMBER', required: true }
+          ]
+        },
+        governanceConfig: {
+          supervisorApprovalDiscountPercent: 15,
+          creditLimitBlockPolicy: 'HARD_BLOCK',
+          allowOfflineOperations: true,
+          maxOfflineTransactionAgeHours: 48
+        }
+      },
+      {
+        id: 'prof-mfg-childrens-apparel',
+        profileType: 'MFG_CHILDRENS_APPAREL',
+        name: "Industrial Manufacturing — Children's Wear & Safety Compliance",
+        nameAr: 'التصنيع الصناعي — ملابس الأطفال واشتراطات الأمان',
+        description: 'Child sizing, button pull-force testing (>=70N), needle detector clear scans, and non-toxic dye certifications.',
+        descriptionAr: 'مقاسات الأطفال، اختبارات شد الأزرار (>=70 نيوتن)، كاشف الإبر المعدنية، وشهادات الصباغة الآمنة.',
+        isPreconfigured: true,
+        isActive: false,
+        posConfig: {
+          enableBarcodeScanner: true,
+          requireVariantSelection: false,
+          enableImeiSerialTracking: false,
+          enableTableManagement: false,
+          enableKitchenDisplaySystem: false,
+          enableWeighingScaleIntegration: false,
+          enableFastCashButtons: false,
+          defaultPaymentMethod: 'CUSTOMER_CREDIT',
+          allowPriceOverride: false,
+          allowNegativeStock: false
+        },
+        salesConfig: {
+          requireCustomerSelection: true,
+          defaultPriceListType: 'WHOLESALE',
+          enableVolumeTierDiscounts: true,
+          enableJobOrderIntegration: true,
+          enableCustomsDeclarationField: false,
+          enableBillOfQuantitiesBOM: true,
+          enableWarrantyTracking: false,
+          maxOrderDiscountThreshold: 15,
+          mandatoryPaymentTerms: true
+        },
+        documentConfig: {
+          orderPrefix: 'CUT-KAP',
+          invoicePrefix: 'INV-KAP',
+          receiptPrefix: 'REC-KAP',
+          returnPrefix: 'RET-KAP',
+          customFields: [
+            { key: 'safetyCertNumber', label: 'Safety QA Cert #', labelAr: 'رقم شهادة الأمان', fieldType: 'TEXT', required: true },
+            { key: 'needleScanPass', label: 'Needle Detector Pass', labelAr: 'اجتياز كاشف الإبر', fieldType: 'SELECT', required: true, options: ['PASS', 'FAIL'] }
+          ]
+        },
+        governanceConfig: {
+          supervisorApprovalDiscountPercent: 15,
+          creditLimitBlockPolicy: 'HARD_BLOCK',
+          allowOfflineOperations: true,
+          maxOfflineTransactionAgeHours: 48
+        }
+      }
+    ];
+  }
+
+  /**
+   * Returns all available industry profiles (standard 9 generic + 8 pilot profiles)
+   */
+  static getAllIndustryProfiles(): IndustryProfileConfig[] {
+    return [...this.getStandardIndustryProfiles(), ...this.getPilotIndustryProfiles()];
+  }
+
+  /**
    * Validates custom configuration changes against non-bypassable architectural controls
    */
   static validateConfigurationIntegrity(config: IndustryProfileConfig): { isValid: boolean; securityViolations: string[] } {

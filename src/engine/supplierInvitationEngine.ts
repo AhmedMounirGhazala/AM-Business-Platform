@@ -15,6 +15,12 @@ import { WorkflowEngine } from './workflowEngine';
 import { RFQUserContext } from './rfqEngine';
 
 export class SupplierInvitationEngine {
+  private static liveVendorProvider?: () => VendorMaster[];
+
+  public static setLiveVendorProvider(provider: () => VendorMaster[]): void {
+    this.liveVendorProvider = provider;
+  }
+
   /**
    * Validate supplier eligibility for sourcing
    */
@@ -24,7 +30,7 @@ export class SupplierInvitationEngine {
     companyId?: string,
     customVendors?: VendorMaster[]
   ): { eligible: boolean; supplier?: any; error?: string } {
-    const vendorsList = customVendors || (INITIAL_VENDORS as any[]);
+    const vendorsList = customVendors || (this.liveVendorProvider ? this.liveVendorProvider() : (INITIAL_VENDORS as any[]));
     let matched = vendorsList.find(
       (s: any) => (s.id === supplierId || s.code === supplierId) && s.tenantId === tenantId
     );

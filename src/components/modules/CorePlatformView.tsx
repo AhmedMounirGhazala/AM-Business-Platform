@@ -27,7 +27,8 @@ import {
   Settings,
   Sliders,
   Flag,
-  Check
+  Check,
+  Palette
 } from 'lucide-react';
 import { usePlatform } from '../../context/PlatformContext';
 import { ApiClient } from '../../services/apiClient';
@@ -60,7 +61,7 @@ import { CompanyModal } from './CompanyModal';
 import { PlatformIntegrationView } from './PlatformIntegrationView';
 
 export const CorePlatformView: React.FC = () => {
-  const { lang, activeTenant, triggerReload, reloadTrigger } = usePlatform();
+  const { lang, activeTenant, triggerReload, reloadTrigger, setActiveModule } = usePlatform();
   const isAr = lang === 'ar';
 
   const [activeTab, setActiveTab] = useState<'configEngine' | 'masterData' | 'numbering' | 'workflows' | 'audit' | 'tenants' | 'platformIntegration'>('configEngine');
@@ -307,6 +308,14 @@ export const CorePlatformView: React.FC = () => {
           >
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>{isAr ? 'جاهزية المنصة والتشغيل (Phase 3.0)' : 'Platform Readiness (Phase 3.0)'}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveModule('branding')}
+            className="px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 font-bold border border-amber-200 dark:border-amber-800/60"
+          >
+            <Palette className="w-3.5 h-3.5 text-amber-600" />
+            <span>{isAr ? 'الهوية والعلامة التجارية (P0-08)' : 'Tenant Branding (P0-08)'}</span>
           </button>
         </div>
       </div>

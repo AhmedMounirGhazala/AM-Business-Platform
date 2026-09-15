@@ -26,6 +26,7 @@ import {
   RevenueRecognitionSchedule,
   ARAuditRecord
 } from '../types/accountsReceivable';
+import { TaxEngine } from './taxEngine';
 
 export class AccountsReceivableEngine {
   /**
@@ -143,7 +144,9 @@ export class AccountsReceivableEngine {
     const processedLines: SalesInvoiceLineItem[] = lines.map((l, idx) => {
       const qty = Number(l.quantity || 1);
       const unitPrice = Number(l.unitPrice || 0);
-      const taxRate = l.taxRate !== undefined ? Number(l.taxRate) : 0.15; // Default 15% VAT
+      const taxRate = l.taxRate !== undefined
+        ? Number(l.taxRate)
+        : TaxEngine.resolveTaxRate({ tenantId, companyId, countryOrJurisdiction: 'SA' }).taxRate;
       const discountRate = l.discountRate !== undefined ? Number(l.discountRate) : 0;
 
       const rawAmount = qty * unitPrice;
@@ -298,12 +301,15 @@ export class AccountsReceivableEngine {
     type: 'RETURN' | 'PRICE_ADJUSTMENT' | 'COMMERCIAL_DISCOUNT',
     reason: string,
     subtotal: number,
-    taxRate: number = 0.15,
+    taxRate?: number,
     invoiceId?: string,
     invoiceNumber?: string,
     createdBy: string = 'usr-001'
   ): { creditNote: CustomerCreditNote; auditRecord: ARAuditRecord } {
-    const taxTotal = subtotal * taxRate;
+    const resolvedTaxRate = taxRate !== undefined
+      ? taxRate
+      : TaxEngine.resolveTaxRate({ tenantId, companyId, countryOrJurisdiction: 'SA' }).taxRate;
+    const taxTotal = subtotal * resolvedTaxRate;
     const grandTotal = subtotal + taxTotal;
     const now = new Date().toISOString();
     const cnNum = `CN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -337,7 +343,9 @@ export class AccountsReceivableEngine {
       ],
       subtotal,
       taxTotal,
+      taxAmount: taxTotal,
       grandTotal,
+      totalAmount: grandTotal,
       status: 'POSTED',
       hash,
       createdBy,
