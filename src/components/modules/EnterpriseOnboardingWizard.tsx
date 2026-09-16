@@ -53,7 +53,7 @@ interface WizardStateResponse {
 }
 
 export const EnterpriseOnboardingWizard: React.FC = () => {
-  const { lang, activeCompany, activeTenant } = usePlatform();
+  const { lang, activeCompany, activeTenant, setActiveModule, markOnboardingCompleted } = usePlatform();
   const isAr = lang === 'ar';
 
   const [loading, setLoading] = useState<boolean>(true);
@@ -193,6 +193,7 @@ export const EnterpriseOnboardingWizard: React.FC = () => {
       if (wizardState) {
         setWizardState({ ...wizardState, isCompleted: true });
       }
+      markOnboardingCompleted();
     } catch (err: any) {
       alert('Certification error: ' + err.message);
     } finally {
@@ -1176,10 +1177,13 @@ export const EnterpriseOnboardingWizard: React.FC = () => {
                 {isAr ? 'طباعة الشهادة' : 'Print Certificate'}
               </button>
               <button
-                onClick={() => setCertificate(null)}
-                className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+                onClick={() => {
+                  setCertificate(null);
+                  setActiveModule('dashboard');
+                }}
+                className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer"
               >
-                {isAr ? 'إغلاق ومتابعة العمليات' : 'Close & Proceed to Workspace'}
+                {isAr ? 'إغلاق والذهاب إلى لوحة التحكم' : 'Close & Launch Dashboard'}
               </button>
             </div>
 

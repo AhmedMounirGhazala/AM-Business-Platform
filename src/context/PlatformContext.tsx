@@ -3,7 +3,7 @@
  * Handles Multi-Tenant switching, Language (AR/EN), RTL, Themes, & Module Navigation
  */
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Company, Tenant, User, Warehouse, TenantBranding, AMPlatformIdentity, APPROVED_AM_IDENTITY } from '../types';
 import { ApiClient } from '../services/apiClient';
 
@@ -67,6 +67,22 @@ interface PlatformContextType {
   setActiveWarehouse: (w: Warehouse) => void;
   
   currentUser: User | null;
+
+  // Platform Initialization & Onboarding Gate (P0-07 First-Run Architecture)
+  isPlatformInitializing: boolean;
+  platformInitError: string | null;
+  retryPlatformInit: () => void;
+  isOnboardingCompleted: boolean | null;
+  onboardingState: {
+    totalSteps: number;
+    currentStep: number;
+    isCompleted: boolean;
+    activeProfile?: any;
+    steps: any[];
+    wizardData?: Record<string, any>;
+  } | null;
+  markOnboardingCompleted: () => void;
+  refreshOnboardingState: () => Promise<void>;
 
   // Tenant Identity & Branding Runtime (P0-08)
   branding: TenantBranding | null;
@@ -178,15 +194,30 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [activeModule, setActiveModuleState] = useState<ModuleView>('dashboard');
 
   const [tenants, setTenants] = useState<Tenant[]>([DEFAULT_TENANT]);
-  const [activeTenant, setActiveTenant] = useState<Tenant | null>(DEFAULT_TENANT);
+  const [activeTenant, setActiveTenantState] = useState<Tenant | null>(DEFAULT_TENANT);
 
   const [companies, setCompanies] = useState<Company[]>([DEFAULT_COMPANY]);
-  const [activeCompany, setActiveCompany] = useState<Company | null>(DEFAULT_COMPANY);
+  const [activeCompany, setActiveCompanyState] = useState<Company | null>(DEFAULT_COMPANY);
 
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [activeWarehouse, setActiveWarehouse] = useState<Warehouse | null>(null);
 
   const [currentUser, setCurrentUser] = useState<User | null>(DEFAULT_USER);
+
+  // Platform Initialization & Onboarding Gate (Enterprise First-Run Architecture)
+  const [isPlatformInitializing, setIsPlatformInitializing] = useState<boolean>(true);
+  const [platformInitError, setPlatformInitError] = useState<string | null>(null);
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean | null>(null);
+  const [onboardingState, setOnboardingState] = useState<{
+    totalSteps: number;
+    currentStep: number;
+    isCompleted: boolean;
+    activeProfile?: any;
+    steps: any[];
+    wizardData?: Record<string, any>;
+  } | null>(null);
+
+  const activeCompanyIdRef = useRef<string>('comp-001');
 
   // Tenant Identity & Branding Runtime (P0-08)
   const [branding, setBranding] = useState<TenantBranding | null>(null);
@@ -377,6 +408,64 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const isFavorite = (mod: ModuleView) => favorites.includes(mod);
 
+  const verifyCompanyOnboarding = useCallback(async (compId: string, tenId: string) => {
+    activeCompanyIdRef.current = compId;
+    try {
+      const res = await ApiClient.getOnboardingWizardState(compId, tenId);
+      // Prevent race conditions if user rapidly switched companies
+      if (activeCompanyIdRef.current !== compId) return;
+
+      if (res && res.wizardState) {
+        const isCompleted = Boolean(res.wizardState.isCompleted);
+        setIsOnboardingCompleted(isCompleted);
+        setOnboardingState(res.wizardState);
+
+        if (!isCompleted) {
+          setActiveModuleState('onboarding_wizard');
+        } else {
+          setActiveModuleState(prev => prev === 'onboarding_wizard' ? 'dashboard' : prev);
+        }
+      }
+    } catch (err: any) {
+      if (activeCompanyIdRef.current !== compId) return;
+      console.warn('Failed to verify company onboarding status:', compId, err);
+      setIsOnboardingCompleted(false);
+      setActiveModuleState('onboarding_wizard');
+    }
+  }, []);
+
+  const setActiveCompany = useCallback((company: Company) => {
+    setActiveCompanyState(company);
+    verifyCompanyOnboarding(company.id, activeTenant?.id || company.tenantId || 'ten-001');
+  }, [activeTenant, verifyCompanyOnboarding]);
+
+  const setActiveTenant = useCallback((tenant: Tenant) => {
+    setActiveTenantState(tenant);
+    const tenantCompanies = companies.filter(c => c.tenantId === tenant.id);
+    const targetComp = tenantCompanies[0] || activeCompany;
+    if (targetComp) {
+      setActiveCompanyState(targetComp);
+      verifyCompanyOnboarding(targetComp.id, tenant.id);
+    }
+  }, [companies, activeCompany, verifyCompanyOnboarding]);
+
+  const markOnboardingCompleted = useCallback(() => {
+    setIsOnboardingCompleted(true);
+    setActiveModuleState('dashboard');
+    triggerReload();
+  }, []);
+
+  const refreshOnboardingState = useCallback(async () => {
+    if (!activeCompany) return;
+    await verifyCompanyOnboarding(activeCompany.id, activeTenant?.id || activeCompany.tenantId || 'ten-001');
+  }, [activeCompany, activeTenant, verifyCompanyOnboarding]);
+
+  const retryPlatformInit = useCallback(() => {
+    setIsPlatformInitializing(true);
+    setPlatformInitError(null);
+    triggerReload();
+  }, []);
+
   const addRecentPage = (id: ModuleView, titleEn: string, titleAr: string) => {
     setRecentPages(prev => {
       const filtered = prev.filter(p => p.id !== id);
@@ -387,6 +476,12 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const setActiveModule = (mod: ModuleView) => {
+    // If onboarding is not completed for active company, lock strictly to Onboarding Wizard
+    if (isOnboardingCompleted === false && mod !== 'onboarding_wizard') {
+      setActiveModuleState('onboarding_wizard');
+      return;
+    }
+
     setActiveModuleState(mod);
     // Add to recent pages automatically
     const moduleTitles: Record<string, { en: string; ar: string }> = {
@@ -448,7 +543,7 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Fetch initial Context Data with automatic resilience against container warmups
+  // Fetch initial Context Data with automatic resilience against container warmups & Onboarding Gate
   useEffect(() => {
     let isCancelled = false;
 
@@ -465,19 +560,36 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         if (isCancelled) return;
 
+        let resolvedTenant: Tenant = activeTenant || DEFAULT_TENANT;
+        let resolvedCompany: Company = activeCompany || DEFAULT_COMPANY;
+
         if (authSettled.status === 'fulfilled') {
           const authRes = authSettled.value;
           if (authRes.user) setCurrentUser(authRes.user);
-          if (authRes.tenant) setActiveTenant(authRes.tenant);
-          if (authRes.company) setActiveCompany(authRes.company);
+          if (authRes.tenant) {
+            resolvedTenant = authRes.tenant;
+            setActiveTenantState(authRes.tenant);
+          }
+          if (authRes.company) {
+            resolvedCompany = authRes.company;
+            setActiveCompanyState(authRes.company);
+          }
         }
 
         if (tenantsSettled.status === 'fulfilled' && tenantsSettled.value.length > 0) {
           setTenants(tenantsSettled.value);
+          if (authSettled.status !== 'fulfilled' || !authSettled.value.tenant) {
+            resolvedTenant = tenantsSettled.value[0];
+            setActiveTenantState(resolvedTenant);
+          }
         }
 
         if (compSettled.status === 'fulfilled' && compSettled.value.length > 0) {
           setCompanies(compSettled.value);
+          if (authSettled.status !== 'fulfilled' || !authSettled.value.company) {
+            resolvedCompany = compSettled.value[0];
+            setActiveCompanyState(resolvedCompany);
+          }
         }
 
         if (whSettled.status === 'fulfilled' && whSettled.value.length > 0) {
@@ -494,19 +606,42 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setAnomaliesCount(anomaliesSettled.value.length);
         }
 
-        // If core auth or tenants failed due to cold boot and we have retries left, retry after short backoff
-        if (attempt < 3 && (authSettled.status === 'rejected' || tenantsSettled.status === 'rejected')) {
-          setTimeout(() => {
-            if (!isCancelled) initPlatform(attempt + 1);
-          }, 800 * (attempt + 1));
+        // Strict Gate: Query SQLite for actual wizard state of resolved active company & tenant
+        const targetCompId = resolvedCompany.id;
+        const targetTenId = resolvedTenant.id;
+        activeCompanyIdRef.current = targetCompId;
+
+        const wizardRes = await ApiClient.getOnboardingWizardState(targetCompId, targetTenId);
+
+        if (isCancelled) return;
+
+        if (wizardRes && wizardRes.wizardState) {
+          const isDone = Boolean(wizardRes.wizardState.isCompleted);
+          setIsOnboardingCompleted(isDone);
+          setOnboardingState(wizardRes.wizardState);
+
+          if (!isDone) {
+            setActiveModuleState('onboarding_wizard');
+          } else {
+            setActiveModuleState('dashboard');
+          }
+
+          setPlatformInitError(null);
+          setIsPlatformInitializing(false);
+        } else {
+          throw new Error('Invalid onboarding wizard state received from backend.');
         }
-      } catch (err) {
+
+      } catch (err: any) {
+        if (isCancelled) return;
         if (attempt < 3) {
           setTimeout(() => {
             if (!isCancelled) initPlatform(attempt + 1);
           }, 800 * (attempt + 1));
         } else {
-          console.warn('Platform initialization notice: Running with resilient default enterprise state.', err);
+          console.error('Platform initialization gate error:', err);
+          setPlatformInitError(err?.message || 'Failed to verify company onboarding status.');
+          setIsPlatformInitializing(false);
         }
       }
     }
@@ -535,6 +670,13 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         activeWarehouse,
         setActiveWarehouse,
         currentUser,
+        isPlatformInitializing,
+        platformInitError,
+        retryPlatformInit,
+        isOnboardingCompleted,
+        onboardingState,
+        markOnboardingCompleted,
+        refreshOnboardingState,
         branding,
         refreshBranding,
         isBrandingLoading,

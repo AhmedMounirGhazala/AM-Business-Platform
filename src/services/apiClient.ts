@@ -120,6 +120,32 @@ export class ApiClient {
   }
 
   // Auth & System Context
+  static async getOnboardingWizardState(companyId: string, tenantId: string): Promise<{
+    success: boolean;
+    wizardState: {
+      totalSteps: number;
+      currentStep: number;
+      isCompleted: boolean;
+      activeProfile?: any;
+      steps: any[];
+      wizardData?: Record<string, any>;
+    };
+    readiness?: any;
+  }> {
+    return this.request<{
+      success: boolean;
+      wizardState: {
+        totalSteps: number;
+        currentStep: number;
+        isCompleted: boolean;
+        activeProfile?: any;
+        steps: any[];
+        wizardData?: Record<string, any>;
+      };
+      readiness?: any;
+    }>(`/onboarding/wizard/state?companyId=${encodeURIComponent(companyId)}&tenantId=${encodeURIComponent(tenantId)}`);
+  }
+
   static async getAuthMe(): Promise<{ user: User; tenant: Tenant; company: Company; token?: string }> {
     const data = await this.request<{ user: User; tenant: Tenant; company: Company; token?: string }>('/auth/me');
     if (data.token) {

@@ -145,8 +145,8 @@ export interface BrandingPublicMetadata {
 }
 
 export interface AMPlatformIdentity {
-  productName: 'AM ERP';
-  productNameAr: 'إيه إم لتخطيط موارد المؤسسات';
+  productName: 'AM Business OS' | 'AM ERP';
+  productNameAr: 'نظام إيه إم لإدارة الأعمال' | 'إيه إم لتخطيط موارد المؤسسات';
   brandFamily: 'AM / Ahmed Mounir';
   brandFamilyAr: 'إيه إم / أحمد منير';
   positioning: 'Financial Accountant | Business Analyst';
@@ -154,7 +154,7 @@ export interface AMPlatformIdentity {
   motto: 'Every successful decision begins with an accurate number';
   mottoAr: 'كل قرار ناجح يبدأ برقم صحيح';
   primaryColor: '#0B1F3A';
-  accentColor: '#F28C28';
+  accentColor: '#C9A227' | '#F28C28';
   neutralColor: '#F8FAFC';
   borderLightColor: '#E2E8F0';
   surfaceColor: '#FFFFFF';
@@ -166,8 +166,8 @@ export interface AMPlatformIdentity {
 }
 
 export const APPROVED_AM_IDENTITY: AMPlatformIdentity = {
-  productName: 'AM ERP',
-  productNameAr: 'إيه إم لتخطيط موارد المؤسسات',
+  productName: 'AM Business OS',
+  productNameAr: 'نظام إيه إم لإدارة الأعمال',
   brandFamily: 'AM / Ahmed Mounir',
   brandFamilyAr: 'إيه إم / أحمد منير',
   positioning: 'Financial Accountant | Business Analyst',
@@ -175,7 +175,7 @@ export const APPROVED_AM_IDENTITY: AMPlatformIdentity = {
   motto: 'Every successful decision begins with an accurate number',
   mottoAr: 'كل قرار ناجح يبدأ برقم صحيح',
   primaryColor: '#0B1F3A',
-  accentColor: '#F28C28',
+  accentColor: '#C9A227',
   neutralColor: '#F8FAFC',
   borderLightColor: '#E2E8F0',
   surfaceColor: '#FFFFFF',

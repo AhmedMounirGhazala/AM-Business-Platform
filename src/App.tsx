@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
+import { RefreshCw, AlertCircle, ShieldCheck } from 'lucide-react';
 import { PlatformProvider, usePlatform } from './context/PlatformContext';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
@@ -33,7 +34,18 @@ import { BrandingSettingsView } from './components/modules/BrandingSettingsView'
 import { ComingSoonView } from './components/modules/ComingSoonView';
 
 const MainLayout: React.FC = () => {
-  const { activeModule, dir, setIsSearchOpen } = usePlatform();
+  const { 
+    activeModule, 
+    dir, 
+    lang,
+    setIsSearchOpen,
+    isPlatformInitializing,
+    platformInitError,
+    retryPlatformInit,
+    isOnboardingCompleted,
+    branding
+  } = usePlatform();
+  const isAr = lang === 'ar';
 
   // Keyboard shortcut Ctrl+K / Cmd+K listener
   useEffect(() => {
@@ -47,7 +59,88 @@ const MainLayout: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setIsSearchOpen]);
 
+  // First-Run / Onboarding Gate Initialization Screen (Zero-Flicker Gate)
+  if (isPlatformInitializing) {
+    return (
+      <div 
+        className="min-h-screen bg-[#071322] text-white flex flex-col items-center justify-center p-6 select-none" 
+        dir={dir}
+        id="am-platform-initialization-gate"
+      >
+        <div className="max-w-md w-full text-center space-y-6">
+          {/* AM Platform Monogram */}
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-[#0B1F3A] border border-[#153258] flex items-center justify-center shadow-2xl relative">
+            <span className="text-2xl font-black tracking-tight text-white">AM</span>
+            <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#F28C28] ring-4 ring-[#071322]" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-xl font-bold tracking-tight text-slate-100">
+              {isAr ? (branding?.appNameAr || 'منصة إيه إم للأعمال') : (branding?.appName || 'AM Business Platform')}
+            </h1>
+            <p className="text-xs font-mono text-slate-400 tracking-wider uppercase">
+              {isAr ? 'التحقق من حالة الإعداد المؤسسي والجاهزية...' : 'Verifying Enterprise Configuration & Onboarding Gate...'}
+            </p>
+          </div>
+
+          {/* Clean Spinner and Status */}
+          <div className="flex flex-col items-center gap-3 pt-2">
+            <RefreshCw className="w-6 h-6 animate-spin text-[#F28C28]" />
+            <span className="text-xs text-slate-400 font-mono">
+              {isAr ? 'التحقق من سجلات المنشأة في قاعدة البيانات...' : 'Querying SQLite onboarding status for active company...'}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Initialization Failure / Backend Unreachable Screen
+  if (platformInitError) {
+    return (
+      <div 
+        className="min-h-screen bg-[#071322] text-white flex flex-col items-center justify-center p-6 select-none" 
+        dir={dir}
+        id="am-platform-gate-error"
+      >
+        <div className="max-w-md w-full bg-[#0B1F3A] border border-red-900/50 rounded-2xl p-6 shadow-2xl space-y-5 text-center">
+          <div className="mx-auto w-12 h-12 rounded-xl bg-red-950/60 border border-red-800 text-red-400 flex items-center justify-center">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+
+          <div className="space-y-1">
+            <h2 className="text-lg font-bold text-slate-100">
+              {isAr ? 'تعذر التحقق من حالة الإعداد' : 'Initialization & Onboarding Gate Notice'}
+            </h2>
+            <p className="text-xs text-slate-400">
+              {isAr 
+                ? 'لم يتمكن النظام من التحقق من حالة إعداد المنشأة في قاعدة البيانات. يرجى إعادة المحاولة.' 
+                : 'The platform could not verify the company onboarding status with the backend engine. Please retry.'}
+            </p>
+          </div>
+
+          <div className="p-3 rounded-lg bg-black/40 border border-slate-800 font-mono text-[11px] text-red-300 break-all text-left rtl:text-right">
+            {platformInitError}
+          </div>
+
+          <button
+            onClick={retryPlatformInit}
+            className="w-full py-2.5 px-4 rounded-xl bg-[#F28C28] hover:bg-[#d9771e] text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4" />
+            {isAr ? 'إعادة المحاولة الآن' : 'Retry Verification Now'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const renderActiveModule = () => {
+    // If onboarding is incomplete for the active company, lock strictly to EnterpriseOnboardingWizard
+    if (isOnboardingCompleted === false) {
+      return <EnterpriseOnboardingWizard />;
+    }
+
     switch (activeModule) {
       case 'dashboard':
         return <ExecutiveDashboard />;

@@ -282,6 +282,17 @@ export class ComplianceEngine {
     return canonicalDoc;
   }
 
+  /**
+   * Strictly validates and resolves the compliance environment.
+   * Allowed: 'LOCAL' | 'SANDBOX' | 'PRODUCTION'. Any invalid/unrecognized string safely falls back to 'LOCAL'.
+   */
+  public static resolveValidEnvironment(rawEnv?: string): ComplianceEnvironment {
+    const candidate = (rawEnv || '').trim().toUpperCase();
+    if (candidate === 'PRODUCTION') return 'PRODUCTION';
+    if (candidate === 'SANDBOX') return 'SANDBOX';
+    return 'LOCAL';
+  }
+
   // =========================================================================
   // 4. SUBMISSION ORCHESTRATION & IDEMPOTENCY
   // =========================================================================
@@ -310,11 +321,12 @@ export class ComplianceEngine {
     }
 
     // 2. Resolve Profile & Environment
+    const resolvedEnv = ComplianceEngine.resolveValidEnvironment(process.env.COMPLIANCE_ENV);
     const profile = this.getTaxpayerProfile(doc.tenantId, doc.companyId) || {
       tenantId: doc.tenantId,
       companyId: doc.companyId,
       jurisdiction: doc.currency === 'SAR' ? 'ZATCA_PHASE2' : 'EGYPT_ETA',
-      environment: (process.env.COMPLIANCE_ENV as ComplianceEnvironment) || 'LOCAL',
+      environment: resolvedEnv,
       taxRegistrationNumber: doc.issuer.taxNumber,
       legalEntityNameEn: doc.issuer.name,
       legalEntityNameAr: doc.issuer.nameAr || doc.issuer.name,
@@ -840,18 +852,21 @@ export class ComplianceEngine {
   // =========================================================================
 
   public getReadinessReport(envParam?: ComplianceEnvironment): ComplianceReadinessResponse {
-    const env = envParam || (process.env.COMPLIANCE_ENV as ComplianceEnvironment) || 'LOCAL';
+    const env = envParam ? ComplianceEngine.resolveValidEnvironment(envParam) : ComplianceEngine.resolveValidEnvironment(process.env.COMPLIANCE_ENV);
     const etaEndpoints = EgyptianTaxAuthorityAdapter.getEndpoints(env);
     const zatcaEndpoints = SaudiZatcaAdapter.getEndpoints(env);
 
-    const etaClientIdPresent = Boolean(process.env.ETA_CLIENT_ID);
-    const etaClientSecretPresent = Boolean(process.env.ETA_CLIENT_SECRET);
+    // Differentiate valid enterprise credentials from dummy/placeholder values (e.g. '1234', 'test', empty)
+    const isRealCredential = (val?: string) => Boolean(val && val.trim().length > 8 && !['1234', 'test', 'dummy'].includes(val.trim()));
+
+    const etaClientIdPresent = isRealCredential(process.env.ETA_CLIENT_ID);
+    const etaClientSecretPresent = isRealCredential(process.env.ETA_CLIENT_SECRET);
     const etaConfigured = etaClientIdPresent && etaClientSecretPresent;
 
-    const zatcaCsidPresent = Boolean(process.env.ZATCA_CSID);
-    const zatcaSecretPresent = Boolean(process.env.ZATCA_CSID_SECRET);
-    const zatcaCertPresent = Boolean(process.env.ZATCA_CERTIFICATE_PEM);
-    const zatcaConfigured = zatcaCsidPresent && zatcaSecretPresent;
+    const zatcaCsidPresent = isRealCredential(process.env.ZATCA_CSID);
+    const zatcaSecretPresent = isRealCredential(process.env.ZATCA_CSID_SECRET);
+    const zatcaCertPresent = Boolean(process.env.ZATCA_CERTIFICATE_PEM && process.env.ZATCA_CERTIFICATE_PEM.includes('BEGIN CERTIFICATE'));
+    const zatcaConfigured = zatcaCsidPresent && zatcaSecretPresent && zatcaCertPresent;
 
     const etaMissing: string[] = [];
     if (!etaClientIdPresent) etaMissing.push('ETA_CLIENT_ID');

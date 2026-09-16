@@ -104,12 +104,12 @@ export const Navbar: React.FC = () => {
             {mobileMenuOpen ? <X className="w-5 h-5 text-amber-500" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveModule('dashboard')}>
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveModule('dashboard')}>
             <div 
               className="flex h-10 w-10 items-center justify-center rounded-xl text-white font-black shadow-md border overflow-hidden shrink-0"
               style={{ 
                 backgroundColor: branding?.primaryColor || '#0B1F3A',
-                borderColor: `${branding?.accentColor || '#F28C28'}66` 
+                borderColor: `${branding?.accentColor || '#C9A227'}66` 
               }}
             >
               {(theme === 'dark' && branding?.darkLogoUrl) ? (
@@ -117,7 +117,7 @@ export const Navbar: React.FC = () => {
               ) : branding?.logoUrl ? (
                 <img src={branding.logoUrl} alt="Logo" className="max-h-8 max-w-8 object-contain" onError={(e) => { (e.target as any).style.display = 'none'; }} />
               ) : (
-                <span className="text-lg tracking-wider" style={{ color: branding?.accentColor || '#F28C28' }}>
+                <span className="text-lg tracking-wider" style={{ color: branding?.accentColor || '#C9A227' }}>
                   {branding?.shortName || 'AM'}
                 </span>
               )}
@@ -126,15 +126,15 @@ export const Navbar: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-900 dark:text-white text-base tracking-tight">
                   {isAr 
-                    ? (branding?.appNameAr || branding?.appName || 'منصة إيه إم للأعمال')
-                    : (branding?.appName || 'AM Business Platform')}
+                    ? (branding?.appNameAr || branding?.appName || 'نظام إيه إم لإدارة الأعمال')
+                    : (branding?.appName || 'AM Business OS')}
                 </span>
                 <span 
                   className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold border"
                   style={{ 
-                    backgroundColor: `${branding?.accentColor || '#F28C28'}1A`,
-                    color: branding?.accentColor || '#F28C28',
-                    borderColor: `${branding?.accentColor || '#F28C28'}4D`
+                    backgroundColor: `${branding?.accentColor || '#C9A227'}1A`,
+                    color: branding?.accentColor || '#C9A227',
+                    borderColor: `${branding?.accentColor || '#C9A227'}4D`
                   }}
                 >
                   {activeTenant?.edition || 'Enterprise'}
@@ -149,7 +149,7 @@ export const Navbar: React.FC = () => {
           <div className="hidden lg:flex items-center gap-2 border-l border-r border-slate-200 dark:border-slate-800 px-4 py-1 mx-2">
             {/* Tenant Selector */}
             <div className="flex items-center gap-2 text-xs">
-              <Layers className="w-4 h-4 text-[#F28C28]" />
+              <Layers className="w-4 h-4 text-[#C9A227]" />
               <select
                 value={activeTenant?.id || ''}
                 onChange={(e) => {
@@ -194,7 +194,7 @@ export const Navbar: React.FC = () => {
             className="w-full flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-2 text-xs text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 transition cursor-pointer"
           >
             <div className="flex items-center gap-2">
-              <Search className="w-4 h-4 text-[#F28C28]" />
+              <Search className="w-4 h-4 text-[#C9A227]" />
               <span>{isAr ? 'ابحث في الحسابات، الفواتير، والقيود... (Ctrl+K)' : 'Search accounts, invoices, entries... (Ctrl+K)'}</span>
             </div>
             <kbd className="hidden sm:inline-block rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400">
@@ -212,7 +212,7 @@ export const Navbar: React.FC = () => {
             className="md:hidden p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
             title="Search"
           >
-            <Search className="w-4 h-4 text-[#F28C28]" />
+            <Search className="w-4 h-4 text-[#C9A227]" />
           </button>
 
           {/* Role Persona Switcher */}
@@ -237,7 +237,7 @@ export const Navbar: React.FC = () => {
             className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             title={isAr ? 'تغيير اللغة إلى الإنجليزية' : 'Switch to Arabic'}
           >
-            <Globe className="w-4 h-4 text-[#F28C28]" />
+            <Globe className="w-4 h-4 text-[#C9A227]" />
             <span className="hidden sm:inline">{lang === 'en' ? 'العربية 🇸🇦' : 'English 🇬🇧'}</span>
             <span className="sm:hidden">{lang === 'en' ? 'AR' : 'EN'}</span>
           </button>
@@ -271,7 +271,7 @@ export const Navbar: React.FC = () => {
               <div className="absolute right-0 ltr:right-0 rtl:left-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-3">
                   <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-[#F28C28]" />
+                    <Bell className="w-4 h-4 text-[#C9A227]" />
                     <span className="font-bold text-xs text-slate-900 dark:text-white">
                       {isAr ? 'مركز التنبيهات والأحداث' : 'Enterprise Notification Hub'}
                     </span>
@@ -331,7 +331,7 @@ export const Navbar: React.FC = () => {
             title={isAr ? 'تبديل المستخدم أو تسجيل الدخول المؤسسي' : 'Switch Account / Enterprise Login'}
             id="nav-user-profile-btn"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B1F3A] text-[#F28C28] font-bold text-xs border border-[#F28C28]/40">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B1F3A] text-[#C9A227] font-bold text-xs border border-[#C9A227]/40">
               AM
             </div>
             <div className="text-left rtl:text-right text-xs">
@@ -412,7 +412,7 @@ export const Navbar: React.FC = () => {
                         : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-[#F28C28]' : 'text-slate-500'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-[#C9A227]' : 'text-slate-500'}`} />
                     <span>{isAr ? item.labelAr : item.labelEn}</span>
                   </button>
                 );
