@@ -366,7 +366,7 @@ export const Sidebar: React.FC = () => {
 
               {!isCollapsed && (
                 <nav className="space-y-0.5">
-                  {cat.items.map((item) => {
+                  {cat.items.filter(item => !item.isFuture).map((item) => {
                     const Icon = item.icon;
                     const isActive = activeModule === item.id;
 

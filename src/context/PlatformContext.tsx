@@ -302,11 +302,7 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [recentPages, setRecentPages] = useState<Array<{ id: ModuleView; titleEn: string; titleAr: string; timestamp: number }>>(() => {
     try {
       const saved = localStorage.getItem('am_erp_recents');
-      return saved ? JSON.parse(saved) : [
-        { id: 'accounting', titleEn: 'Finance & Accounting', titleAr: 'المالية والمحاسبة', timestamp: Date.now() - 3600000 },
-        { id: 'inventory', titleEn: 'Inventory', titleAr: 'المخزون', timestamp: Date.now() - 7200000 },
-        { id: 'sales', titleEn: 'Sales & CRM', titleAr: 'المبيعات والعملاء', timestamp: Date.now() - 10800000 }
-      ];
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
@@ -327,56 +323,7 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     read: boolean;
     category: string;
     actionModule?: ModuleView;
-  }>>([
-    {
-      id: 'notif-1',
-      titleEn: 'Pending Purchase Order Approval',
-      titleAr: 'طلب موافقة أمر شراء معلق',
-      messageEn: 'PO-2026-0098 for SAR 142,500 requires CFO authorization',
-      messageAr: 'أمر الشراء PO-2026-0098 بمبلغ 142,500 ريال يتطلب اعتماد المدير المالي',
-      priority: 'high',
-      timestamp: '10 mins ago',
-      read: false,
-      category: 'Workflow',
-      actionModule: 'workflows'
-    },
-    {
-      id: 'notif-[#2]',
-      titleEn: 'Low Stock Alert',
-      titleAr: 'تنبيه انخفاض المخزون',
-      messageEn: 'Item SKU-1002 (Enterprise Server Rack) fell below reorder threshold (2 units left)',
-      messageAr: 'الصنف SKU-1002 انخفض عن حد إعادة الطلب (المتبقي 2 وحدة)',
-      priority: 'high',
-      timestamp: '25 mins ago',
-      read: false,
-      category: 'Inventory',
-      actionModule: 'inventory'
-    },
-    {
-      id: 'notif-3',
-      titleEn: 'ZATCA E-Invoicing Sync Verified',
-      titleAr: 'مزامنة الفوترة الإلكترونية مع زكاة',
-      messageEn: 'Phase 2 cryptographic stamp verified for 24 batch invoices',
-      messageAr: 'تم التثبت من الختم المشفر لمرحلة هيئة الزكاة الثانية لـ 24 فاتورة',
-      priority: 'info',
-      timestamp: '1 hour ago',
-      read: true,
-      category: 'Compliance',
-      actionModule: 'accounting'
-    },
-    {
-      id: 'notif-4',
-      titleEn: 'Customer Credit Limit Warning',
-      titleAr: 'تحذير حد الائتمان للعميل',
-      messageEn: 'Al Olayan Group exceeded approved 30-day credit limit by SAR 18,400',
-      messageAr: 'مجموعة العليان تجاوزت حد الائتمان المعتمد بمبلغ 18,400 ريال',
-      priority: 'critical',
-      timestamp: '2 hours ago',
-      read: false,
-      category: 'Credit Risk',
-      actionModule: 'sales'
-    }
-  ]);
+  }>>([]);
 
   // Dashboard widget customizer state
   const defaultWidgets = [

@@ -60,7 +60,7 @@ export class BrandingEngine {
       faviconUrl: '',
       primaryColor: '#0B1F3A',
       secondaryColor: '#1E3A8A',
-      accentColor: '#F28C28',
+      accentColor: '#C9A227',
       surfaceColor: '#FFFFFF',
       textColor: '#0F172A',
       fontFamily: 'Inter',
@@ -229,7 +229,7 @@ export class BrandingEngine {
 
   public static validateThemeContrast(
     primaryColor: string,
-    accentColor: string = '#F28C28',
+    accentColor: string = '#C9A227',
     surfaceColor: string = '#FFFFFF',
     textColor: string = '#0F172A'
   ): { passesWcagAA: boolean; report: ContrastEvaluationReport } {
@@ -245,7 +245,7 @@ export class BrandingEngine {
     textColor: string,
     surfaceColor: string,
     primaryColor: string,
-    accentColor: string = '#F28C28'
+    accentColor: string = '#C9A227'
   ): ContrastEvaluationReport {
     const ratioTextOnSurface = BrandingEngine.calculateContrastRatio(textColor, surfaceColor);
     const ratioPrimaryOnSurface = BrandingEngine.calculateContrastRatio(primaryColor, surfaceColor);

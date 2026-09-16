@@ -1686,15 +1686,23 @@ function initializePilotPersistence(): void {
     // Initialize durable rate limiting and account lockout persistence in SecurityEngine
     SecurityEngine.initPersistence(pilotDb);
     // Ensure all users have secure cryptographic credentials (PBKDF2/SHA512)
+    const needsBootstrapPassword = users.some(u => !u.passwordHash);
+    const needsBootstrapPin = users.some(u => !u.pinHash);
+    if (process.env.NODE_ENV === 'production' && needsBootstrapPassword && !process.env.INITIAL_ADMIN_PASSWORD) {
+      throw new Error('CRITICAL SECURITY CONFIGURATION ERROR: INITIAL_ADMIN_PASSWORD is required to bootstrap production users.');
+    }
+    if (process.env.NODE_ENV === 'production' && needsBootstrapPin && !process.env.INITIAL_CASHIER_PIN) {
+      throw new Error('CRITICAL SECURITY CONFIGURATION ERROR: INITIAL_CASHIER_PIN is required to bootstrap production users.');
+    }
+    const initialPassword = process.env.INITIAL_ADMIN_PASSWORD || 'Admin@2026!';
+    const initialPin = process.env.INITIAL_CASHIER_PIN || '1234';
     users.forEach(u => {
       let updated = false;
       if (!u.passwordHash) {
-        const initialPassword = process.env.INITIAL_ADMIN_PASSWORD || 'Admin@2026!';
         u.passwordHash = SecurityEngine.hashPassword(initialPassword);
         updated = true;
       }
       if (!u.pinHash) {
-        const initialPin = process.env.INITIAL_CASHIER_PIN || '1234';
         u.pinHash = SecurityEngine.hashPin(initialPin);
         updated = true;
       }
@@ -2410,6 +2418,27 @@ async function startServer() {
       }
     }
     next();
+  });
+
+  // All API routes are protected by default. Only authentication bootstrap,
+  // public branding metadata, and first-run onboarding probes remain public.
+  app.use('/api/v1', (req: Request, res: Response, next: NextFunction) => {
+    const publicRoute =
+      req.path === '/auth/me' ||
+      req.path === '/auth/login' ||
+      req.path === '/auth/verify-pin' ||
+      req.path === '/branding/platform' ||
+      req.path.startsWith('/branding/public/') ||
+      req.path === '/onboarding/wizard/state' ||
+      req.path === '/onboarding/readiness';
+
+    if (publicRoute) {
+      return next();
+    }
+
+    return SecurityEngine.requireAuth(users)(req, res, () => {
+      SecurityEngine.enforceTenantCompany()(req, res, next);
+    });
   });
 
   // Auth / Me

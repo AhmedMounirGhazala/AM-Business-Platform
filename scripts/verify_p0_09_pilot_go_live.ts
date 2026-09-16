@@ -799,7 +799,7 @@ export async function runPilotGoLiveCertificationSuite() {
   // I-01: Immutable AM Platform Identity Tokens
   const platformIdentity = brandingEngine.getPlatformIdentity();
   const deepNavyMatch = platformIdentity.colors.primary === '#0B1F3A';
-  const amberMatch = platformIdentity.colors.accent === '#F28C28';
+  const goldMatch = platformIdentity.colors.accent === '#C9A227';
   const canvasMatch = platformIdentity.colors.canvas === '#F8FAFC';
   const borderMatch = platformIdentity.colors.border === '#E2E8F0';
   const latinTypeMatch = platformIdentity.typography.latinFont === 'Plus Jakarta Sans';
@@ -813,9 +813,9 @@ export async function runPilotGoLiveCertificationSuite() {
     description: 'Verify canonical AM Platform Identity tokens, palettes, typographies, and mottos',
     precondition: 'Official AM Platform Identity configuration',
     action: 'Verify primary, accent, canvas, border, typography, and English/Arabic motto strings',
-    expectedResult: 'Exact token matching: #0B1F3A, #F28C28, #F8FAFC, #E2E8F0, Plus Jakarta Sans, Cairo, and approved mottos',
-    actualResult: `colorsValid=${deepNavyMatch && amberMatch && canvasMatch && borderMatch}, typographyValid=${latinTypeMatch && arabicTypeMatch}, mottoValid=${mottoEnMatch && mottoArMatch}`,
-    status: (deepNavyMatch && amberMatch && canvasMatch && borderMatch && latinTypeMatch && arabicTypeMatch && mottoEnMatch && mottoArMatch) ? 'PASS' : 'FAIL',
+    expectedResult: 'Exact token matching: #0B1F3A, #C9A227, #F8FAFC, #E2E8F0, Plus Jakarta Sans, Cairo, and approved mottos',
+    actualResult: `colorsValid=${deepNavyMatch && goldMatch && canvasMatch && borderMatch}, typographyValid=${latinTypeMatch && arabicTypeMatch}, mottoValid=${mottoEnMatch && mottoArMatch}`,
+    status: (deepNavyMatch && goldMatch && canvasMatch && borderMatch && latinTypeMatch && arabicTypeMatch && mottoEnMatch && mottoArMatch) ? 'PASS' : 'FAIL',
     evidence: `Palette: primary=${platformIdentity.colors.primary}, accent=${platformIdentity.colors.accent}; Mottos verified bilingual`
   });
 

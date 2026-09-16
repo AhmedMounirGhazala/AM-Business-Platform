@@ -56,7 +56,7 @@ async function runP008Certification() {
   const defaultBranding = engine.getDefaultBranding(TENANT_A);
   assert(defaultBranding.tenantId === TENANT_A, 'Default branding assigns requested tenantId');
   assert(defaultBranding.primaryColor === '#0B1F3A', 'Default primaryColor matches AM Platform design system');
-  assert(defaultBranding.accentColor === '#F28C28', 'Default accentColor matches AM Platform amber');
+  assert(defaultBranding.accentColor === '#C9A227', 'Default accentColor matches AM Platform gold');
   assert(defaultBranding.fontFamily === 'Inter', 'Default fontFamily is Inter');
   assert(defaultBranding.showPoweredBy === true, 'Default showPoweredBy is true');
   assert(defaultBranding.brandingVersion === 1, 'Default brandingVersion starts at 1');
@@ -349,10 +349,10 @@ async function runP008Certification() {
 
   const canonicalIdentity = engine.getCanonicalPlatformIdentity();
   assert(canonicalIdentity.brandFamily === 'AM / Ahmed Mounir', 'Canonical brandFamily is AM / Ahmed Mounir');
-  assert(canonicalIdentity.productName === 'AM ERP', 'Canonical productName is AM ERP');
+  assert(canonicalIdentity.productName === 'AM Business OS', 'Canonical productName is AM Business OS');
   assert(canonicalIdentity.positioning.includes('Financial Accountant') && canonicalIdentity.positioning.includes('Business Analyst'), 'Canonical positioning includes Financial Accountant and Business Analyst');
   assert(canonicalIdentity.primaryColor === '#0B1F3A', 'Canonical primary color is #0B1F3A');
-  assert(canonicalIdentity.accentColor === '#F28C28', 'Canonical accent color is #F28C28');
+  assert(canonicalIdentity.accentColor === '#C9A227', 'Canonical accent color is #C9A227');
   assert(canonicalIdentity.neutralColor === '#F8FAFC', 'Canonical neutral canvas is #F8FAFC');
   assert(canonicalIdentity.borderLightColor === '#E2E8F0', 'Canonical border is #E2E8F0');
   assert(canonicalIdentity.fontFamily === 'Plus Jakarta Sans', 'Canonical latin typography is Plus Jakarta Sans');
@@ -363,7 +363,7 @@ async function runP008Certification() {
   // Test Platform Branding Retrieval
   const platformBranding = engine.getPlatformBranding();
   assert(platformBranding.primaryColor === '#0B1F3A', 'Platform branding primaryColor is #0B1F3A');
-  assert(platformBranding.accentColor === '#F28C28', 'Platform branding accentColor is #F28C28');
+  assert(platformBranding.accentColor === '#C9A227', 'Platform branding accentColor is #C9A227');
   assert(platformBranding.logoUrl.includes('platform/am-logo.svg'), 'Platform branding serves canonical SVG logo');
 
   // Test Platform Mutation Security Guard (Anti-Dilution Guard)

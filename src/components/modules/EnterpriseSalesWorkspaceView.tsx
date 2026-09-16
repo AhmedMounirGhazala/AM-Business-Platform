@@ -62,8 +62,9 @@ import { HardeningTestSuiteTab } from '../sales/HardeningTestSuiteTab';
 import { TaxEngine } from '../../engine/taxEngine';
 
 export const EnterpriseSalesWorkspaceView: React.FC = () => {
-  const { lang, activeCompany } = usePlatform();
+  const { lang, activeCompany, currentUser } = usePlatform();
   const isAr = lang === 'ar';
+  const canAccessDeveloperTools = currentUser?.role === 'Super Admin';
 
   const [activeTab, setActiveTab] = useState<
     'orders' | 'quotations' | 'mobile_sales' | 'sync_center' | 'conflicts' | 'recovery' | 'pricelists' | 'discounts' | 'promotions' | 'returns' | 'industry_config' | 'compliance' | 'export' | 'testing' | 'analytics'
@@ -416,7 +417,7 @@ export const EnterpriseSalesWorkspaceView: React.FC = () => {
           { id: 'export', labelEn: 'Universal Export', labelAr: 'تصدير البيانات الموثقة', icon: Download },
           { id: 'testing', labelEn: '20-Scenario Tests', labelAr: 'حزمة اختبارات الصلابة', icon: Award },
           { id: 'analytics', labelEn: 'Sales Analytics & BI', labelAr: 'التحليلات ومؤشرات الأداء', icon: TrendingUp }
-        ].map(tab => {
+        ].filter(tab => tab.id !== 'testing' || canAccessDeveloperTools).map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
