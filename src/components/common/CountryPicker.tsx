@@ -65,7 +65,7 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border transition flex items-center justify-between gap-2 text-left bg-white dark:bg-slate-900 shadow-xs cursor-pointer ${
+        className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border transition flex items-center justify-between gap-2 text-start bg-white dark:bg-slate-900 am-control am-focus-ring cursor-pointer ${
           isOpen
             ? 'border-indigo-600 ring-2 ring-indigo-500/20 dark:border-indigo-500'
             : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -89,18 +89,18 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 left-0 right-0 mt-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute z-50 left-0 right-0 mt-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 am-popover overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
           {/* Search Box */}
           <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-3.5 h-3.5 absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 autoFocus
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder={isAr ? 'ابحث باسم الدولة أو الكود...' : 'Search country name, ISO, currency...'}
-                className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs focus:outline-none focus:border-indigo-500 dark:text-white"
+                className="w-full ps-8 pe-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs am-control focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30 focus:border-indigo-500 dark:text-white"
               />
             </div>
           </div>
@@ -123,7 +123,7 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({
                       setIsOpen(false);
                       setSearch('');
                     }}
-                    className={`w-full min-h-[44px] px-3 py-2 rounded-xl text-left transition flex items-center justify-between gap-2 cursor-pointer ${
+                    className={`w-full min-h-[44px] px-3 py-2 rounded-lg text-start transition flex items-center justify-between gap-2 cursor-pointer ${
                       isSelected
                         ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-200 font-semibold'
                         : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'

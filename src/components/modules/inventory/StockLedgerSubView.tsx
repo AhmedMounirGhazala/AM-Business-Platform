@@ -223,41 +223,41 @@ export const StockLedgerSubView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-[#0B1F3A] border border-[#153258] rounded-2xl p-6 text-white shadow-sm">
+      <div className="bg-slate-900 dark:bg-slate-950 border border-slate-700/80 rounded-xl p-5 text-white shadow-lg shadow-slate-950/10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="bg-[#153258] text-[#F28C28] text-xs px-2.5 py-1 rounded-full border border-[#F28C28]/30 font-mono uppercase tracking-wider">
-                Phase 2.2.1 Execution Engine
+              <span className="bg-indigo-500/15 text-indigo-200 text-xs px-2.5 py-1 rounded-full border border-indigo-400/30 font-semibold uppercase tracking-wider">
+                Stock operations
               </span>
               <span className="bg-emerald-500/20 text-emerald-300 text-xs px-2.5 py-1 rounded-full border border-emerald-500/30 font-medium">
                 Immutable Stock Ledger
               </span>
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-white">Stock Ledger & Inventory Execution Engine</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-white">Stock Ledger & Movement History</h2>
             <p className="text-slate-300 text-sm mt-1 max-w-3xl">
-              Real-time Stock Quant Engine with append-only stock movement logging. Emits business events and decoupled financial events for SAP S/4HANA & Oracle SCM alignment.
+              Real-time movement history with an append-only audit trail for receiving, issuing, transfers, and adjustments.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => openExecutionModal('GRN')}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-900/30 text-sm"
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2.5 rounded-lg transition-all shadow-sm shadow-emerald-900/30 text-sm"
             >
               <PackageCheck className="w-4 h-4" />
               Goods Receipt (GRN)
             </button>
             <button
               onClick={() => openExecutionModal('GIN')}
-              className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white font-medium px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-rose-900/30 text-sm"
+              className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white font-medium px-4 py-2.5 rounded-lg transition-all shadow-sm shadow-rose-900/30 text-sm"
             >
               <PackageMinus className="w-4 h-4" />
               Goods Issue (GIN)
             </button>
             <button
               onClick={() => openExecutionModal('GENERIC')}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-900/30 text-sm"
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2.5 rounded-lg transition-all shadow-sm shadow-indigo-900/30 text-sm"
             >
               <Plus className="w-4 h-4" />
               Record Movement
@@ -322,17 +322,17 @@ export const StockLedgerSubView: React.FC = () => {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-sm space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {/* Search Bar */}
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by Movement #, SKU, Ref, Doc..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+              className="am-control w-full ps-10 pe-4 py-2 bg-slate-50 dark:bg-slate-800 border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
             />
           </div>
 
@@ -341,7 +341,7 @@ export const StockLedgerSubView: React.FC = () => {
             <select
               value={selectedMovementType}
               onChange={(e) => setSelectedMovementType(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+              className="am-control w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
             >
               <option value="ALL">All Movement Types</option>
               {movementTypes.map(m => (
@@ -586,7 +586,7 @@ export const StockLedgerSubView: React.FC = () => {
   financialEventType: selectedLedgerEntry.quantityImpact > 0 ? 'STOCK_RECEIPT_POSTED' : 'STOCK_ISSUE_POSTED',
   amount: selectedLedgerEntry.totalCost,
   currency: 'SAR',
-  targetEngine: 'FinancialEventEngine (No direct GL posting)',
+  processing: 'Financial event queue (No direct GL posting)',
   status: 'EMITTED_SUCCESSFULLY'
 }, null, 2)}
                 </pre>
@@ -603,7 +603,7 @@ export const StockLedgerSubView: React.FC = () => {
             <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
                 <span className="bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 text-xs font-mono px-2.5 py-0.5 rounded-full font-bold">
-                  Phase 2.2.1 Execution
+                  Movement entry
                 </span>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1">
                   {executionMode === 'GRN' ? 'Execute Goods Receipt (GRN)' :

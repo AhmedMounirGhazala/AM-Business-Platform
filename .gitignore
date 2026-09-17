@@ -6,3 +6,15 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Runtime persistence and generated certification data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+backups/
+test-results/
+data/
+1234/

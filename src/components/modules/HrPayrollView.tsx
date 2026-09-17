@@ -4,18 +4,17 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Users, DollarSign, PlayCircle, CheckCircle2, Building, ShieldCheck } from 'lucide-react';
+import { Users, PlayCircle } from 'lucide-react';
 import { usePlatform } from '../../context/PlatformContext';
 import { ApiClient } from '../../services/apiClient';
 import { Employee } from '../../types';
 
 export const HrPayrollView: React.FC = () => {
-  const { lang, reloadTrigger, triggerReload } = usePlatform();
+  const { lang, reloadTrigger } = usePlatform();
   const isAr = lang === 'ar';
 
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [payrollRunning, setPayrollRunning] = useState(false);
-  const [payrollSuccess, setPayrollSuccess] = useState(false);
+  const [payrollError, setPayrollError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadHrData() {
@@ -30,13 +29,11 @@ export const HrPayrollView: React.FC = () => {
   }, [reloadTrigger]);
 
   const handleRunWpsPayroll = async () => {
-    setPayrollRunning(true);
-    setTimeout(async () => {
-      setPayrollRunning(false);
-      setPayrollSuccess(true);
-      triggerReload();
-      setTimeout(() => setPayrollSuccess(false), 4000);
-    }, 1500);
+    setPayrollError(
+      isAr
+        ? 'تشغيل الرواتب غير متاح حتى يتم تفعيل مسار الاعتماد والترحيل الفعلي.'
+        : 'Payroll execution is unavailable until the approval, posting, and WPS workflow is enabled.'
+    );
   };
 
   const totalPayrollCost = employees.reduce((acc, e) => acc + e.basicSalary + e.housingAllowance + e.transportAllowance, 0);
@@ -49,7 +46,7 @@ export const HrPayrollView: React.FC = () => {
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            <span>{isAr ? 'إدارة الموارد البشرية والرواتب (HR & Payroll WPS)' : 'Human Resources & WPS Payroll Engine'}</span>
+            <span>{isAr ? 'إدارة الموارد البشرية والرواتب (HR & Payroll WPS)' : 'Human Resources & WPS Payroll'}</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {isAr ? 'سجل الموظفين، مسيرات الرواتب الشهرية، حماية الأجور، وتوليد قيود الرواتب التلقائية' : 'Employee master files, GOSI contributions, WPS payroll batch processing'}
@@ -58,18 +55,16 @@ export const HrPayrollView: React.FC = () => {
 
         <button
           onClick={handleRunWpsPayroll}
-          disabled={payrollRunning}
-          className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-400 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-xs cursor-pointer"
+          className="flex items-center gap-1.5 bg-slate-600 hover:bg-slate-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-xs cursor-pointer"
         >
           <PlayCircle className="w-4 h-4" />
-          <span>{payrollRunning ? (isAr ? 'جاري المعالجة...' : 'Processing Batch...') : (isAr ? 'تشغيل مسير الرواتب (WPS)' : 'Execute WPS Payroll Run')}</span>
+          <span>{isAr ? 'حالة تشغيل الرواتب' : 'Payroll run status'}</span>
         </button>
       </div>
 
-      {payrollSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-200 text-xs font-bold flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-          <span>{isAr ? 'تم إنشاء قيد مسير الرواتب وتوليد ملف حماية الأجور بنجاح!' : 'WPS Payroll file generated & Journal entry posted successfully!'}</span>
+      {payrollError && (
+        <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-900 text-xs font-semibold">
+          {payrollError}
         </div>
       )}
 
@@ -92,7 +87,7 @@ export const HrPayrollView: React.FC = () => {
         <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <div className="text-xs font-semibold text-slate-500">{isAr ? 'نظام حماية الأجور' : 'WPS Compliance'}</div>
           <div className="text-xl font-mono font-bold text-emerald-600 mt-1">
-            100% Verified
+            {isAr ? 'غير مهيأ' : 'Not configured'}
           </div>
         </div>
       </div>

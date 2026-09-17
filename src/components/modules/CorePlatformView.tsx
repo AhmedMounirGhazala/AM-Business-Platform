@@ -247,7 +247,7 @@ export const CorePlatformView: React.FC = () => {
             }`}
           >
             <Cpu className="w-3.5 h-3.5" />
-            <span>{isAr ? 'محرك الإعدادات المركزي (System Brain)' : 'Configuration Engine (System Brain)'}</span>
+            <span>{isAr ? 'الإعدادات المركزية' : 'Central Configuration'}</span>
           </button>
 
           <button
@@ -307,7 +307,7 @@ export const CorePlatformView: React.FC = () => {
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>{isAr ? 'جاهزية المنصة والتشغيل (Phase 3.0)' : 'Platform Readiness (Phase 3.0)'}</span>
+            <span>{isAr ? 'جاهزية المنصة والتشغيل' : 'Platform Readiness'}</span>
           </button>
 
           <button
@@ -338,12 +338,12 @@ export const CorePlatformView: React.FC = () => {
           <div className="bg-[#0B1F3A] border border-[#153258] rounded-2xl p-6 text-white shadow-sm space-y-4">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#153258] border border-[#F28C28]/30 text-[#F28C28] text-xs font-mono mb-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#153258] border border-brand-gold/30 text-brand-gold text-xs font-mono mb-2">
                   <Cpu className="w-3.5 h-3.5" />
-                  <span>PHASE 4 SYSTEM BRAIN ENGINE</span>
+                  <span>CENTRAL CONFIGURATION</span>
                 </div>
                 <h2 className="text-lg font-bold text-white">
-                  {isAr ? 'محرك الإعدادات المركزي وإدارة إصدار المنصة' : 'Hierarchical Configuration Engine & Platform Edition Brain'}
+                  {isAr ? 'الإعدادات المركزية وإدارة إصدار المنصة' : 'Hierarchical Configuration & Platform Edition'}
                 </h2>
                 <p className="text-xs text-slate-300 mt-1 max-w-3xl">
                   {isAr 
@@ -717,7 +717,7 @@ export const CorePlatformView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Localization Engine & Compliance Packs */}
+              {/* Localization & Compliance Packs */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
                 <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                   <Globe className="w-4 h-4 text-emerald-600" />
@@ -888,13 +888,13 @@ export const CorePlatformView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: Document Numbering Engine */}
+      {/* TAB 2: Document Numbering */}
       {activeTab === 'numbering' && (
         <div className="space-y-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-1 flex items-center gap-2">
               <Hash className="w-4 h-4 text-indigo-500" />
-              <span>{isAr ? 'محرك ترقيم المستندات التلقائي' : 'Document Auto-Numbering Engine Rules'}</span>
+              <span>{isAr ? 'قواعد ترقيم المستندات التلقائي' : 'Document Auto-Numbering Rules'}</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               {isAr ? 'ضبط قواعد التسلسل الفريد للقيود المحاسبية، الفواتير، وأوامر الشراء' : 'Configure strict document prefix formats, zero padding, and next sequence IDs per tenant'}
@@ -1101,13 +1101,13 @@ export const CorePlatformView: React.FC = () => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#0B1F3A] border border-[#153258] text-white shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-[#153258] border border-[#F28C28]/40 text-[#F28C28]">
+              <div className="p-3 rounded-2xl bg-[#153258] border border-brand-gold/40 text-brand-gold">
                 <Building2 className="w-6 h-6" />
               </div>
               <div>
                 <h2 className="text-base font-bold text-white flex items-center gap-2">
                   <span>{isAr ? 'إدارة الكيانات القانونية والتهيئة الدولية' : 'Legal Entities & Global Companies Management'}</span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-[#F28C28] text-slate-950 font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-brand-gold text-slate-950 font-bold">
                     Multi-Country Ready
                   </span>
                 </h2>
@@ -1122,7 +1122,7 @@ export const CorePlatformView: React.FC = () => {
                 setSelectedCompanyForEdit(null);
                 setIsCompanyModalOpen(true);
               }}
-              className="min-h-[44px] px-5 py-2.5 rounded-2xl bg-[#F28C28] hover:bg-[#d9791c] text-slate-950 font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md shrink-0"
+              className="btn-am-accent min-h-[44px] px-5 py-2.5 rounded-2xl text-slate-950 font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-sm shrink-0"
             >
               <Building2 className="w-4 h-4" />
               <span>{isAr ? 'إضافة شركة جديدة' : 'Create New Company'}</span>
@@ -1222,7 +1222,7 @@ export const CorePlatformView: React.FC = () => {
         </div>
       )}
 
-      {/* PLATFORM INTEGRATION & PILOT READINESS (PHASE 3.0) */}
+      {/* PLATFORM INTEGRATION & PILOT READINESS */}
       {activeTab === 'platformIntegration' && (
         <PlatformIntegrationView />
       )}
@@ -1230,7 +1230,7 @@ export const CorePlatformView: React.FC = () => {
       {/* EDIT NUMBERING RULE MODAL */}
       {editingRule && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-base">
               {isAr ? 'تعديل قاعدة الترقيم التلقائي' : 'Edit Numbering Sequence Rule'}
             </h3>
@@ -1242,7 +1242,7 @@ export const CorePlatformView: React.FC = () => {
                   type="text"
                   disabled
                   value={editingRule.entityType}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3 py-2 font-mono font-bold"
+                  className="am-control w-full border bg-slate-100 dark:bg-slate-800 px-3 py-2 font-mono font-bold"
                 />
               </div>
 
@@ -1252,7 +1252,7 @@ export const CorePlatformView: React.FC = () => {
                   type="text"
                   value={editingRule.prefix}
                   onChange={(e) => setEditingRule({ ...editingRule, prefix: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
+                  className="am-control w-full border bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
                 />
               </div>
 
@@ -1262,7 +1262,7 @@ export const CorePlatformView: React.FC = () => {
                   type="number"
                   value={editingRule.nextNumber}
                   onChange={(e) => setEditingRule({ ...editingRule, nextNumber: Number(e.target.value) })}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
+                  className="am-control w-full border bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
                 />
               </div>
 
@@ -1272,7 +1272,7 @@ export const CorePlatformView: React.FC = () => {
                   type="number"
                   value={editingRule.paddingLength}
                   onChange={(e) => setEditingRule({ ...editingRule, paddingLength: Number(e.target.value) })}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
+                  className="am-control w-full border bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
                 />
               </div>
             </div>
@@ -1286,7 +1286,7 @@ export const CorePlatformView: React.FC = () => {
               </button>
               <button
                 onClick={handleSaveNumberingRule}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shadow-xs"
+                className="btn-am-primary px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer shadow-sm"
               >
                 Save Rule
               </button>

@@ -24,3 +24,19 @@ SQLite uses WAL mode and requires a durable mounted volume. Container-local or e
 - Bundle sizes exceed the advisory threshold.
 - Repository test execution generates database/WAL and asset artifacts; CI should isolate test data paths.
 - Clean production bootstrap and seed-data separation remain unfinished.
+
+## Stabilization baseline
+
+The application now fails fast in production when authentication secrets or
+durable storage configuration are missing. Runtime SQLite files, WAL files,
+backups, and certification output are ignored by Git; production storage must
+still be configured outside the repository.
+
+Before a production release:
+
+1. Run `npm run lint` and `npm run build` in a clean CI runner.
+2. Start the built server with production secrets and a durable database path.
+3. Run `APP_URL=<deployment-url> npm run smoke`.
+4. Execute backup/restore and restart tests against the target mounted volume.
+5. Review each enabled module's authorization, persistence, audit, and recovery
+   workflow. Do not treat local compliance adapter tests as authority approval.

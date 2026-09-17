@@ -2,14 +2,16 @@
 
 @layer base {
   :root {
-    --brand-navy: #0B1F3A;
-    --brand-navy-light: #153258;
-    --brand-navy-dark: #061121;
-    --brand-orange: #F28C28;
-    --brand-orange-hover: #D9771A;
-    --bg-light: #F8FAFC;
+    --brand-navy: #0B1D36;
+    --brand-navy-light: #173253;
+    --brand-navy-dark: #061224;
+    --brand-gold: #CAAF7D;
+    --brand-gold-muted: #A88D5A;
+    --bg-light: #F4F6F8;
     --bg-surface: #FFFFFF;
-    --border-light: #E2E8F0;
+    --border-light: #DDE3EA;
+    --text-primary: #172334;
+    --text-muted: #667386;
   }
 
   .dark {
@@ -37,87 +39,355 @@
 
 /* Custom Enterprise Brand Utility Classes */
 .bg-brand-navy {
-  background-color: #0B1F3A;
+  background-color: var(--brand-navy);
 }
 
 .bg-brand-navy-light {
-  background-color: #153258;
+  background-color: var(--brand-navy-light);
 }
 
 .bg-brand-navy-dark {
-  background-color: #061121;
+  background-color: var(--brand-navy-dark);
 }
 
 .text-brand-navy {
-  color: #0B1F3A;
+  color: var(--brand-navy);
 }
 
 .border-brand-navy {
-  border-color: #0B1F3A;
+  border-color: var(--brand-navy);
 }
 
 .bg-brand-orange {
-  background-color: #F28C28;
+  background-color: var(--brand-gold);
 }
 
 .hover\:bg-brand-orange-hover:hover {
-  background-color: #D9771A;
+  background-color: var(--brand-gold-muted);
 }
 
 .text-brand-orange {
-  color: #F28C28;
+  color: var(--brand-gold-muted);
+}
+
+.text-brand-gold {
+  color: var(--brand-gold);
 }
 
 .border-brand-orange {
-  border-color: #F28C28;
+  border-color: var(--brand-gold);
 }
 
 /* Enterprise AM Systemic Buttons & Tags */
 .btn-am-primary {
-  background-color: #0B1F3A;
+  background-color: var(--brand-navy);
   color: #FFFFFF;
-  border: 1px solid #0B1F3A;
+  border: 1px solid var(--brand-navy);
   font-weight: 600;
   transition: all 150ms ease;
 }
 .btn-am-primary:hover {
-  background-color: #153258;
-  border-color: #153258;
+  background-color: var(--brand-navy-light);
+  border-color: var(--brand-navy-light);
 }
 
 .btn-am-accent {
-  background-color: #F28C28;
+  background-color: var(--brand-gold);
   color: #FFFFFF;
-  border: 1px solid #F28C28;
+  border: 1px solid var(--brand-gold);
   font-weight: 600;
   transition: all 150ms ease;
 }
 .btn-am-accent:hover {
-  background-color: #D9771A;
-  border-color: #D9771A;
+  background-color: var(--brand-gold-muted);
+  border-color: var(--brand-gold-muted);
 }
 
 .badge-am-accent {
-  background-color: rgba(242, 140, 40, 0.12);
-  color: #D9771A;
-  border: 1px solid rgba(242, 140, 40, 0.3);
+  background-color: rgba(202, 175, 125, 0.14);
+  color: var(--brand-gold-muted);
+  border: 1px solid rgba(202, 175, 125, 0.35);
 }
 
 .dark .badge-am-accent {
-  background-color: rgba(242, 140, 40, 0.2);
-  color: #F28C28;
-  border: 1px solid rgba(242, 140, 40, 0.4);
+  background-color: rgba(202, 175, 125, 0.2);
+  color: var(--brand-gold);
+  border: 1px solid rgba(202, 175, 125, 0.4);
 }
 
 .card-am-surface {
   background-color: #FFFFFF;
   border: 1px solid #E2E8F0;
+  border-radius: 0.5rem;
+}
+
+/* Shared AM form language for controls used across the platform. */
+.am-control {
+  border-color: var(--border-light);
+  border-radius: 0.625rem;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.am-control:focus-visible,
+.am-focus-ring:focus-visible {
+  outline: 2px solid var(--brand-gold);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgb(202 175 125 / 0.2);
+}
+
+/* Shared report presentation language. Keep report surfaces calm and scannable
+   while allowing the content to inherit the active direction and theme. */
+.report-shell {
+  color: var(--text-primary);
+}
+
+.report-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 0.875rem;
+  box-shadow: 0 4px 14px rgb(15 23 42 / 0.05);
+}
+
+.report-filter {
+  min-height: 2.5rem;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 0.625rem;
+}
+
+.report-filter:focus-visible,
+.report-shell button:focus-visible,
+.report-shell a:focus-visible {
+  outline: 2px solid var(--brand-gold);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgb(202 175 125 / 0.2);
+}
+
+.report-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.report-table thead {
+  background: color-mix(in srgb, var(--bg-light) 90%, var(--brand-navy));
+}
+
+.report-table th,
+.report-table td {
+  padding: 0.7rem 0.75rem;
+}
+
+.report-table tbody tr {
+  border-block-end: 1px solid var(--border-light);
+}
+
+.report-table tbody tr:last-child {
+  border-block-end: 0;
+}
+
+.dark .report-card {
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.2);
+}
+
+.am-popover {
+  border-color: var(--border-light);
   border-radius: 0.75rem;
+  box-shadow: 0 12px 28px rgb(15 23 42 / 0.12);
+}
+
+.dark .am-popover {
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.28);
 }
 
 .dark .card-am-surface {
   background-color: #0B1628;
   border-color: #1E293B;
+}
+
+/* Purchasing workspace presentation */
+.purchasing-shell {
+  --purchasing-accent: #2563eb;
+  --purchasing-accent-strong: #1d4ed8;
+  background: var(--bg-light);
+}
+
+.purchasing-switcher {
+  background: var(--bg-surface);
+  border-block-end: 1px solid var(--border-light);
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+}
+
+.purchasing-switcher-label {
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.purchasing-segmented-control {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: color-mix(in srgb, var(--bg-light) 92%, var(--brand-navy));
+  border: 1px solid var(--border-light);
+  border-radius: 0.75rem;
+}
+
+.purchasing-segmented-control button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2rem;
+  padding: 0.4rem 0.75rem;
+  border: 0;
+  border-radius: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.purchasing-segmented-control button:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+}
+
+.purchasing-segmented-control button.is-active {
+  color: #fff;
+  background: var(--purchasing-accent);
+  box-shadow: 0 1px 3px rgb(37 99 235 / 0.25);
+}
+
+.purchasing-segmented-control button.is-active.is-success {
+  background: #047857;
+  box-shadow: 0 1px 3px rgb(4 120 87 / 0.25);
+}
+
+.purchasing-context {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: end;
+}
+
+.purchasing-procurement {
+  background: #0f1b2d;
+}
+
+.purchasing-procurement > div:first-child,
+.purchasing-payables > div:first-child {
+  border-radius: 0.875rem;
+  padding: 1.25rem;
+  background: var(--bg-surface);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.08);
+}
+
+.purchasing-procurement > div:first-child {
+  border: 1px solid #243553;
+}
+
+.purchasing-payables > div:first-child {
+  border: 1px solid var(--border-light);
+}
+
+.purchasing-procurement button,
+.purchasing-payables button {
+  border-radius: 0.625rem;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.purchasing-procurement button:focus-visible,
+.purchasing-payables button:focus-visible {
+  outline: 2px solid var(--brand-gold);
+  outline-offset: 2px;
+}
+
+.purchasing-procurement table,
+.purchasing-payables table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.purchasing-procurement th,
+.purchasing-payables th {
+  font-size: 0.6875rem;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.purchasing-procurement th,
+.purchasing-procurement td,
+.purchasing-payables th,
+.purchasing-payables td {
+  padding-block: 0.7rem;
+  padding-inline: 0.85rem;
+}
+
+.purchasing-procurement select,
+.purchasing-procurement input,
+.purchasing-payables select,
+.purchasing-payables input {
+  min-height: 2.25rem;
+  border-radius: 0.625rem;
+}
+
+.purchasing-procurement .rounded-xl,
+.purchasing-payables .rounded-xl {
+  border-radius: 0.875rem;
+}
+
+.purchasing-procurement .shadow-lg {
+  box-shadow: 0 8px 18px rgb(37 99 235 / 0.18);
+}
+
+@media (max-width: 640px) {
+  .purchasing-switcher-label,
+  .purchasing-context {
+    font-size: 0.6875rem;
+  }
+
+  .purchasing-context {
+    text-align: start;
+  }
+
+  .purchasing-segmented-control {
+    width: 100%;
+  }
+
+  .purchasing-segmented-control button {
+    flex: 1;
+    justify-content: center;
+    padding-inline: 0.5rem;
+  }
+}
+
+.dark .purchasing-switcher {
+  background: #0b1628;
+  border-color: #243553;
+}
+
+.dark .purchasing-switcher-label {
+  color: #e2e8f0;
+}
+
+.dark .purchasing-segmented-control {
+  background: #111f34;
+  border-color: #2b3c58;
+}
+
+.dark .purchasing-segmented-control button:hover {
+  color: #f8fafc;
+  background: #1a2a43;
+}
+
+.dark .purchasing-payables {
+  background: #070e1a;
+  color: #e2e8f0;
 }
 
 /* Custom Scrollbar */

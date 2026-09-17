@@ -5,16 +5,16 @@
  */
 
 import React, { useState } from 'react';
-import { 
-  LayoutDashboard, 
-  Building, 
-  Calculator, 
-  Package, 
-  ShoppingBag, 
-  Truck, 
-  Users, 
-  UserCheck, 
-  Bot, 
+import {
+  LayoutDashboard,
+  Building,
+  Calculator,
+  Package,
+  ShoppingBag,
+  Truck,
+  Users,
+  UserCheck,
+  Bot,
   Landmark,
   Factory,
   Store,
@@ -61,14 +61,14 @@ interface NavCategory {
 }
 
 export const Sidebar: React.FC = () => {
-  const { 
-    lang, 
-    activeModule, 
-    setActiveModule, 
-    pendingApprovalsCount, 
-    anomaliesCount, 
-    branding, 
-    activeCompany 
+  const {
+    lang,
+    activeModule,
+    setActiveModule,
+    pendingApprovalsCount,
+    anomaliesCount,
+    branding,
+    activeCompany
   } = usePlatform();
   const isAr = lang === 'ar';
 
@@ -96,13 +96,13 @@ export const Sidebar: React.FC = () => {
       items: [
         {
           id: 'dashboard',
-          labelEn: 'Executive Dashboard',
+          labelEn: 'Business Overview',
           labelAr: 'لوحة القيادة التنفيذية',
           icon: LayoutDashboard
         },
         {
           id: 'ai',
-          labelEn: 'AI Copilot & Auditing',
+          labelEn: 'Smart Review',
           labelAr: 'المساعد الذكي والتدقيق',
           icon: Bot,
           badge: anomaliesCount > 0 ? anomaliesCount : undefined,
@@ -110,13 +110,13 @@ export const Sidebar: React.FC = () => {
         },
         {
           id: 'bi_analytics',
-          labelEn: 'BI & Financial Analytics',
+          labelEn: 'Business Analytics',
           labelAr: 'الذكاء المالي والتحليلات',
           icon: PieChart
         },
         {
           id: 'reports',
-          labelEn: 'Executive Reports Center',
+          labelEn: 'Reports',
           labelAr: 'مركز التقارير التنفيذية',
           icon: FileSpreadsheet
         }
@@ -128,21 +128,21 @@ export const Sidebar: React.FC = () => {
       items: [
         {
           id: 'sales',
-          labelEn: 'Sales & CRM Invoicing',
+          labelEn: 'Sales & Customers',
           labelAr: 'المبيعات والعملاء والفواتير',
           icon: ShoppingBag
         },
         {
           id: 'pos',
-          labelEn: 'POS & Retail Counters',
+          labelEn: 'Point of Sale',
           labelAr: 'نقاط البيع والتجزئة',
           icon: Store,
           badge: 'POS',
-          badgeColor: 'bg-[#C9A227] text-slate-950 font-black'
+          badgeColor: 'bg-[#CAAF7D] text-slate-950 font-black'
         },
         {
           id: 'documents',
-          labelEn: 'Commercial Documents & Archive',
+          labelEn: 'Documents',
           labelAr: 'أرشيف المستندات التجارية',
           icon: FolderGit2
         }
@@ -154,13 +154,13 @@ export const Sidebar: React.FC = () => {
       items: [
         {
           id: 'purchasing',
-          labelEn: 'Purchasing & Vendor Bills',
+          labelEn: 'Purchasing',
           labelAr: 'المشتريات وفواتير الموردين',
           icon: Truck
         },
         {
           id: 'inventory',
-          labelEn: 'Multi-Warehouse Inventory',
+          labelEn: 'Inventory',
           labelAr: 'إدارة المخازن والمستودعات',
           icon: Package
         }
@@ -187,25 +187,25 @@ export const Sidebar: React.FC = () => {
       items: [
         {
           id: 'accounting',
-          labelEn: 'General Ledger & Chart of Accounts',
+          labelEn: 'Accounting',
           labelAr: 'الأستاذ العام ودليل الحسابات',
           icon: Calculator
         },
         {
           id: 'banking',
-          labelEn: 'Banking & Treasury Flow',
+          labelEn: 'Banking & Cash',
           labelAr: 'الحسابات البنكية والخزينة',
           icon: Landmark
         },
         {
           id: 'fixed_assets',
-          labelEn: 'Fixed Assets & Depreciation',
+          labelEn: 'Fixed Assets',
           labelAr: 'الأصول الثابتة والإهلاك',
           icon: Building2
         },
         {
           id: 'hr',
-          labelEn: 'HR & Payroll Management',
+          labelEn: 'People & Payroll',
           labelAr: 'الموارد البشرية ومسير الرواتب',
           icon: UserCheck
         }
@@ -217,7 +217,7 @@ export const Sidebar: React.FC = () => {
       items: [
         {
           id: 'workflows',
-          labelEn: 'Approval Workflows & Dual Sig',
+          labelEn: 'Approvals',
           labelAr: 'دورات الاعتماد والتوقيع المزدوج',
           icon: Workflow,
           badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
@@ -225,13 +225,13 @@ export const Sidebar: React.FC = () => {
         },
         {
           id: 'audit_center',
-          labelEn: 'Immutable Audit Trail',
+          labelEn: 'Audit Trail',
           labelAr: 'مركز التدقيق وسجل الحركات',
           icon: ClipboardList
         },
         {
           id: 'users_security',
-          labelEn: 'RBAC Users & Permissions',
+          labelEn: 'Users & Access',
           labelAr: 'المستخدمين والصلاحيات (RBAC)',
           icon: ShieldCheck
         }
@@ -243,31 +243,31 @@ export const Sidebar: React.FC = () => {
       items: [
         {
           id: 'master_data',
-          labelEn: 'Enterprise Master Data',
+          labelEn: 'Master Data',
           labelAr: 'البيانات الأساسية الموحدة',
           icon: Database
         },
         {
           id: 'settings',
-          labelEn: 'Taxes, ZATCA & Regional Settings',
+          labelEn: 'Taxes & Regional Settings',
           labelAr: 'الضرائب وإعدادات التوطين',
           icon: Settings
         },
         {
           id: 'configuration_center',
-          labelEn: 'Fiscal Configuration Center',
+          labelEn: 'Financial Setup',
           labelAr: 'مركز التهيئة والسنوات المالية',
           icon: Sliders
         },
         {
           id: 'branding',
-          labelEn: 'Tenant Identity & White-Label',
+          labelEn: 'Branding',
           labelAr: 'الهوية المؤسسية والشعار',
           icon: Palette
         },
         {
           id: 'platform_readiness',
-          labelEn: 'Enterprise Operational Readiness',
+          labelEn: 'System Readiness',
           labelAr: 'جاهزية المنصة التشغيلية',
           icon: ShieldCheck,
           badge: '100%',
@@ -275,7 +275,7 @@ export const Sidebar: React.FC = () => {
         },
         {
           id: 'onboarding_wizard',
-          labelEn: 'First-Run Setup Wizard',
+          labelEn: 'Setup Guide',
           labelAr: 'معالج التهيئة الأولية',
           icon: Award
         }
@@ -348,8 +348,8 @@ export const Sidebar: React.FC = () => {
   const navCategories = rawCategories.filter(cat => cat.isVisible !== false);
 
   return (
-    <aside className="w-64 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 hidden md:flex flex-col justify-between select-none overflow-y-auto max-h-[calc(100vh-64px)]">
-      <div className="space-y-4">
+    <aside className="w-64 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-4 hidden md:flex flex-col justify-between select-none overflow-y-auto max-h-[calc(100vh-4.25rem)]">
+      <div className="space-y-5">
         {navCategories.map((cat) => {
           const isCollapsed = collapsedCategories[cat.titleEn];
 
@@ -376,19 +376,19 @@ export const Sidebar: React.FC = () => {
                         type="button"
                         onClick={() => setActiveModule(item.id)}
                         style={isActive ? {
-                          backgroundColor: branding?.primaryColor || '#0B1F3A',
-                          borderColor: `${branding?.accentColor || '#C9A227'}4D`
+                          backgroundColor: branding?.primaryColor || '#0B1D36',
+                          borderColor: `${branding?.accentColor || '#CAAF7D'}4D`
                         } : {}}
-                        className={`w-full min-h-[40px] flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition cursor-pointer ${
+                        className={`w-full min-h-[38px] flex items-center justify-between rounded-md px-3 py-2 text-xs font-medium transition cursor-pointer ${
                           isActive
-                            ? 'text-white shadow-md font-bold border'
+                            ? 'text-white font-bold border'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 truncate min-w-0">
-                          <Icon 
-                            className="w-4 h-4 shrink-0" 
-                            style={isActive ? { color: branding?.accentColor || '#C9A227' } : {}} 
+                          <Icon
+                            className="w-4 h-4 shrink-0"
+                            style={isActive ? { color: branding?.accentColor || '#CAAF7D' } : {}}
                           />
                           <span className="truncate text-xs font-semibold">
                             {isAr ? item.labelAr : item.labelEn}
@@ -401,17 +401,17 @@ export const Sidebar: React.FC = () => {
                               {isAr ? 'قريباً' : 'Soon'}
                             </span>
                           ) : item.badge ? (
-                            <span 
+                            <span
                               className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${item.badgeColor || 'text-white'}`}
-                              style={!item.badgeColor ? { backgroundColor: branding?.accentColor || '#C9A227' } : {}}
+                              style={!item.badgeColor ? { backgroundColor: branding?.accentColor || '#CAAF7D' } : {}}
                             >
                               {item.badge}
                             </span>
                           ) : (
                             isActive && (
-                              <ChevronRight 
-                                className="w-3.5 h-3.5 rtl:rotate-180" 
-                                style={{ color: branding?.accentColor || '#C9A227' }} 
+                              <ChevronRight
+                                className="w-3.5 h-3.5 rtl:rotate-180"
+                                style={{ color: branding?.accentColor || '#CAAF7D' }}
                               />
                             )
                           )}
@@ -431,27 +431,27 @@ export const Sidebar: React.FC = () => {
         <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 border border-slate-200 dark:border-slate-800 text-xs space-y-1.5">
           <div className="flex items-center justify-between text-slate-900 dark:text-white font-semibold">
             <span className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" style={{ color: branding?.accentColor || '#C9A227' }} />
+              <Sparkles className="w-3.5 h-3.5" style={{ color: branding?.accentColor || '#CAAF7D' }} />
               <span className="font-bold truncate max-w-[140px]">
-                {isAr 
+                {isAr
                   ? (branding?.appNameAr || branding?.appName || 'منصة إيه إم للأعمال')
                   : (branding?.appName || 'AM Business OS')}
               </span>
             </span>
-            <span 
+            <span
               className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md border"
               style={{
-                color: branding?.accentColor || '#C9A227',
-                backgroundColor: `${branding?.accentColor || '#C9A227'}1A`,
-                borderColor: `${branding?.accentColor || '#C9A227'}33`
+                color: branding?.accentColor || '#CAAF7D',
+                backgroundColor: `${branding?.accentColor || '#CAAF7D'}1A`,
+                borderColor: `${branding?.accentColor || '#CAAF7D'}33`
               }}
             >
               v2.8.0
             </span>
           </div>
           <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
-            {branding?.tradingName || (isAr 
-              ? 'نظام تشغيل المؤسسات وفق معايير IFRS مع التوطين الكامل' 
+            {branding?.tradingName || (isAr
+              ? 'نظام تشغيل المؤسسات وفق معايير IFRS مع التوطين الكامل'
               : 'IFRS-Compliant Commercial ERP Engine')}
           </p>
           {(branding?.showPoweredBy ?? true) && (
@@ -459,7 +459,7 @@ export const Sidebar: React.FC = () => {
               <div className="font-semibold text-slate-500 dark:text-slate-300">
                 {isAr ? 'مدعوم بواسطة إيه إم • أحمد منير' : 'Powered by AM Business OS • Ahmed Mounir'}
               </div>
-              <div className="text-[8.5px] text-[#C9A227] italic">
+              <div className="text-[8.5px] text-[#CAAF7D] italic">
                 {isAr ? '«كل قرار ناجح يبدأ برقم صحيح»' : '"Every successful decision begins with an accurate number"'}
               </div>
             </div>

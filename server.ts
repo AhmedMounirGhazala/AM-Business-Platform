@@ -7,6 +7,12 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
+import { loadAppConfig, logConfigSummary } from './server/config';
+import {
+  apiErrorMiddleware,
+  apiNotFoundMiddleware,
+  registerRequestMiddleware,
+} from './server/middleware';
 import { GoogleGenAI } from '@google/genai';
 import { 
   INITIAL_ACCOUNTS, 
@@ -459,7 +465,13 @@ import { ConfigurationEngine } from './src/engine/configurationEngine';
 import { Phase26HardeningSuite } from './src/engine/phase26HardeningSuite';
 import { PilotDatabaseService } from './server/pilotDatabase';
 import { SecurityEngine } from './server/securityEngine';
+import { getAuthenticatedActor, getAuthenticatedScope, registerAuthenticationMiddleware } from './server/authMiddleware';
+import { registerRouteAuthorizationMiddleware } from './server/routeAuthorization';
+import { registerPeriodGuardMiddleware } from './server/periodGuard';
+import { registerSystemRoutes } from './server/systemRoutes';
 import { BrandingEngine } from './server/brandingEngine';
+import { registerBrandingRoutes } from './server/brandingRoutes';
+import { registerOnboardingRoutes } from './server/onboardingRoutes';
 import {
   initDurableCollection,
   persistEntity,
@@ -469,6 +481,8 @@ import {
 import { PilotMasterDataImportRow } from './src/types/pilot';
 
 dotenv.config();
+const appConfig = loadAppConfig();
+logConfigSummary(appConfig);
 
 // In-Memory Database Repositories
 let tenants = [...INITIAL_TENANTS];
@@ -1683,6 +1697,12 @@ function initializePilotPersistence(): void {
     postingRules = initDurableCollection('postingRules', postingRules, pilotDb);
     industryProfiles = initDurableCollection('industryProfiles', industryProfiles, pilotDb);
     users = initDurableCollection('users', users, pilotDb);
+    if (process.env.NODE_ENV === 'production' && users.length === 0) {
+      throw new Error(
+        'PRODUCTION BOOTSTRAP REQUIRED: no users exist in the configured database. ' +
+        'Provision the first administrator through the deployment bootstrap process before starting the application.'
+      );
+    }
     // Initialize durable rate limiting and account lockout persistence in SecurityEngine
     SecurityEngine.initPersistence(pilotDb);
     // Ensure all users have secure cryptographic credentials (PBKDF2/SHA512)
@@ -2179,47 +2199,11 @@ function evaluateWorkflow(
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = appConfig.port;
 
   app.use(express.json());
-
-  // API health check route (Liveness probe: verifies process is alive and responsive)
-  app.get('/api/health', (_req: Request, res: Response) => {
-    const report = pilotDb.getPersistenceReport();
-    res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      engine: 'AM ERP Enterprise Pilot Kernel',
-      database: {
-        status: 'ACTIVE',
-        walMode: report.walMode,
-        storageType: report.storageType,
-        isPersistent: report.isPersistent,
-        readinessStatus: report.readinessStatus
-      }
-    });
-  });
-
-  // API readiness check route (Readiness probe: fails with 503 in production if storage is ephemeral)
-  app.get('/api/readiness', (_req: Request, res: Response) => {
-    const report = pilotDb.getPersistenceReport();
-    const isReady = report.readinessStatus === 'READY';
-    if (!isReady) {
-      res.status(503).json({
-        status: 'not_ready',
-        error: 'PERSISTENCE_NOT_GUARANTEED',
-        message: report.operationalMessage,
-        remedyInstructions: report.remedyInstructions,
-        persistence: report
-      });
-      return;
-    }
-    res.json({
-      status: 'ready',
-      message: report.operationalMessage,
-      persistence: report
-    });
-  });
+  registerRequestMiddleware(app);
+  registerSystemRoutes(app, { pilotDb });
 
   // ==================== PILOT READINESS INFRASTRUCTURE ROUTES ====================
   // 1. Pilot Database Status
@@ -2402,49 +2386,22 @@ async function startServer() {
 
   // ==================== API V1 ROUTES ====================
 
-  // Auth Context Extraction Middleware (authoritative server-side Bearer token)
-  app.use((req: Request, _res: Response, next: NextFunction) => {
-    const token = SecurityEngine.extractBearerToken(req);
-    if (token) {
-      try {
-        const payload = SecurityEngine.verifyToken(token);
-        const user = users.find(u => u.id === payload.sub);
-        if (user && user.active) {
-          (req as any).auth = payload;
-          (req as any).user = SecurityEngine.sanitizeUser(user);
-        }
-      } catch {
-        // Invalid or expired token: auth remains undefined
-      }
-    }
-    next();
+  registerAuthenticationMiddleware(app, { getUsers: () => users });
+  registerRouteAuthorizationMiddleware(app);
+  registerPeriodGuardMiddleware(app, () => fiscalPeriods as any);
+  registerBrandingRoutes(app, { brandingEngine: BrandingEngine.getInstance() });
+  registerOnboardingRoutes(app, {
+    pilotDb,
+    manager: IndustryVerticalManager.getInstance(pilotDb),
+    tenants,
+    companies,
+    recordAudit
   });
-
-  // All API routes are protected by default. Only authentication bootstrap,
-  // public branding metadata, and first-run onboarding probes remain public.
-  app.use('/api/v1', (req: Request, res: Response, next: NextFunction) => {
-    const publicRoute =
-      req.path === '/auth/me' ||
-      req.path === '/auth/login' ||
-      req.path === '/auth/verify-pin' ||
-      req.path === '/branding/platform' ||
-      req.path.startsWith('/branding/public/') ||
-      req.path === '/onboarding/wizard/state' ||
-      req.path === '/onboarding/readiness';
-
-    if (publicRoute) {
-      return next();
-    }
-
-    return SecurityEngine.requireAuth(users)(req, res, () => {
-      SecurityEngine.enforceTenantCompany()(req, res, next);
-    });
-  });
-
   // Auth / Me
   app.get('/api/v1/auth/me', (req: Request, res: Response) => {
-    let activeUser = (req as any).user ? users.find(u => u.id === (req as any).user.id) : users[0];
-    if (!activeUser) activeUser = users[0];
+    const auth = (req as any).auth;
+    const activeUser = auth ? users.find(u => u.id === auth.sub) : undefined;
+    if (!activeUser) return res.status(401).json({ error: 'Authentication required.' });
 
     const token = SecurityEngine.generateToken({
       sub: activeUser.id,
@@ -2465,186 +2422,6 @@ async function startServer() {
       company: userCompany,
       token
     });
-  });
-
-  // ==========================================================================
-  // P0-08 TENANT IDENTITY & WHITE-LABEL BRANDING API
-  // ==========================================================================
-
-  app.get('/api/v1/branding', (req: Request, res: Response) => {
-    try {
-      const authUser = (req as any).user;
-      const queryTenant = req.query.tenantId as string;
-      const queryCompany = req.query.companyId as string;
-
-      let targetTenantId = authUser?.tenantId || queryTenant || 'ten-001';
-      if (authUser && authUser.role === 'Super Admin' && queryTenant) {
-        targetTenantId = queryTenant;
-      }
-
-      const branding = BrandingEngine.getInstance().getBranding(targetTenantId, queryCompany);
-      res.json({ success: true, branding });
-    } catch (err: any) {
-      res.status(400).json({ error: err.message });
-    }
-  });
-
-  app.get('/api/v1/branding/public/:tenantId', (req: Request, res: Response) => {
-    try {
-      const { tenantId } = req.params;
-      const metadata = BrandingEngine.getInstance().getPublicBranding(tenantId);
-      res.json({ success: true, branding: metadata });
-    } catch (err: any) {
-      res.status(400).json({ error: err.message });
-    }
-  });
-
-  app.get('/api/v1/branding/platform', (req: Request, res: Response) => {
-    try {
-      const engine = BrandingEngine.getInstance();
-      res.json({
-        success: true,
-        platformIdentity: engine.getCanonicalPlatformIdentity(),
-        platformBranding: engine.getPlatformBranding()
-      });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.put('/api/v1/branding', (req: Request, res: Response) => {
-    const authUser = (req as any).user;
-    if (!authUser) {
-      return res.status(401).json({ error: 'Authentication required. Missing or invalid Bearer token.' });
-    }
-
-    if (authUser.role !== 'Tenant Admin' && authUser.role !== 'Super Admin') {
-      return res.status(403).json({
-        error: `Forbidden: Role '${authUser.role}' is not authorized to configure enterprise branding.`
-      });
-    }
-
-    let targetTenantId = authUser.tenantId;
-    if (authUser.role === 'Super Admin' && req.body.tenantId) {
-      targetTenantId = req.body.tenantId;
-    } else if (req.body.tenantId && req.body.tenantId !== authUser.tenantId) {
-      return res.status(403).json({
-        error: 'Forbidden: Anti-IDOR Violation. Cannot mutate branding for a different tenant.'
-      });
-    }
-
-    try {
-      const result = BrandingEngine.getInstance().saveBranding(
-        targetTenantId,
-        req.body,
-        authUser.id,
-        authUser.role,
-        req.body.companyId
-      );
-      res.json(result);
-    } catch (err: any) {
-      res.status(400).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/v1/branding/reset', (req: Request, res: Response) => {
-    const authUser = (req as any).user;
-    if (!authUser) {
-      return res.status(401).json({ error: 'Authentication required.' });
-    }
-
-    if (authUser.role !== 'Tenant Admin' && authUser.role !== 'Super Admin') {
-      return res.status(403).json({
-        error: `Forbidden: Role '${authUser.role}' is not authorized to reset branding.`
-      });
-    }
-
-    let targetTenantId = authUser.tenantId;
-    if (authUser.role === 'Super Admin' && req.body.tenantId) {
-      targetTenantId = req.body.tenantId;
-    } else if (req.body.tenantId && req.body.tenantId !== authUser.tenantId) {
-      return res.status(403).json({
-        error: 'Forbidden: Cannot reset branding for another tenant.'
-      });
-    }
-
-    try {
-      const result = BrandingEngine.getInstance().resetToDefaults(
-        targetTenantId,
-        authUser.id,
-        authUser.role,
-        req.body.companyId
-      );
-      res.json(result);
-    } catch (err: any) {
-      res.status(400).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/v1/branding/preview', (req: Request, res: Response) => {
-    try {
-      const authUser = (req as any).user;
-      const targetTenantId = authUser?.tenantId || req.body.tenantId || 'ten-001';
-      const report = BrandingEngine.getInstance().validateBranding(req.body, targetTenantId);
-      res.json(report);
-    } catch (err: any) {
-      res.status(400).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/v1/branding/assets', (req: Request, res: Response) => {
-    const authUser = (req as any).user;
-    if (!authUser) {
-      return res.status(401).json({ error: 'Authentication required.' });
-    }
-
-    if (authUser.role !== 'Tenant Admin' && authUser.role !== 'Super Admin') {
-      return res.status(403).json({
-        error: `Forbidden: Role '${authUser.role}' is not authorized to upload branding assets.`
-      });
-    }
-
-    const { assetType, fileName, mimeType, fileDataBase64, tenantId } = req.body;
-    if (!assetType || !fileName || !mimeType || !fileDataBase64) {
-      return res.status(400).json({ error: 'Missing required asset upload parameters.' });
-    }
-
-    let targetTenantId = authUser.tenantId;
-    if (authUser.role === 'Super Admin' && tenantId) {
-      targetTenantId = tenantId;
-    } else if (tenantId && tenantId !== authUser.tenantId) {
-      return res.status(403).json({ error: 'Forbidden: Cannot upload assets for another tenant.' });
-    }
-
-    try {
-      const cleanBase64 = String(fileDataBase64).replace(/^data:[a-zA-Z0-9/+-]+;base64,/, '');
-      const buffer = Buffer.from(cleanBase64, 'base64');
-      const asset = BrandingEngine.getInstance().saveAsset(
-        targetTenantId,
-        assetType,
-        buffer,
-        fileName,
-        mimeType,
-        authUser.id
-      );
-      res.status(201).json({ success: true, asset });
-    } catch (err: any) {
-      res.status(400).json({ error: err.message });
-    }
-  });
-
-  app.get('/api/v1/branding/assets/:tenantId/:fileName', (req: Request, res: Response) => {
-    const { tenantId, fileName } = req.params;
-    const asset = BrandingEngine.getInstance().getAssetFile(tenantId, fileName);
-    if (!asset) {
-      return res.status(404).json({ error: 'Asset not found.' });
-    }
-
-    res.setHeader('Content-Type', asset.mimeType);
-    res.setHeader('Content-Security-Policy', "default-src 'none'");
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'private, max-age=3600');
-    res.send(asset.buffer);
   });
 
   // Core Platform - Tenants & Companies
@@ -4652,26 +4429,30 @@ async function startServer() {
     res.json(inventoryPeriods);
   });
 
-  app.post('/api/v1/inventory/periods', (req: Request, res: Response) => {
+  app.post('/api/v1/inventory/periods', SecurityEngine.requireRole('Inventory Manager', 'Finance Manager', 'Tenant Admin'), (req: Request, res: Response) => {
+    const scope = getAuthenticatedScope(req);
+    if (!req.body.periodName || !req.body.startDate || !req.body.endDate || !Number.isInteger(Number(req.body.fiscalYear)) || !Number.isInteger(Number(req.body.fiscalPeriod))) {
+      return res.status(400).json({ error: 'periodName, dates, fiscalYear, and fiscalPeriod are required.' });
+    }
     const newPeriod = {
       id: `period-${Date.now()}`,
-      tenantId: req.body.tenantId || 'ten-001',
-      companyId: req.body.companyId || 'comp-001',
-      periodName: req.body.periodName || 'NEW-PERIOD',
-      fiscalYear: Number(req.body.fiscalYear || 2026),
-      fiscalPeriod: Number(req.body.fiscalPeriod || 1),
-      startDate: req.body.startDate || new Date().toISOString(),
-      endDate: req.body.endDate || new Date().toISOString(),
+      tenantId: scope.tenantId,
+      companyId: scope.companyId,
+      periodName: req.body.periodName,
+      fiscalYear: Number(req.body.fiscalYear),
+      fiscalPeriod: Number(req.body.fiscalPeriod),
+      startDate: req.body.startDate,
+      endDate: req.body.endDate,
       status: 'Open',
-      allowOverrideUsers: ['usr-admin', 'Super Admin']
+      allowOverrideUsers: [scope.userId]
     };
     inventoryPeriods.unshift(newPeriod);
     res.status(201).json(newPeriod);
   });
 
-  app.post('/api/v1/inventory/periods/:id/close', (req: Request, res: Response) => {
+  app.post('/api/v1/inventory/periods/:id/close', SecurityEngine.requireRole('Inventory Manager', 'Finance Manager', 'Tenant Admin'), (req: Request, res: Response) => {
     const { id } = req.params;
-    const userId = req.body.userId || 'Ahmed Mounir';
+    const userId = getAuthenticatedActor(req);
     const result = InventoryClosingControlEngine.closePeriod(id, userId, inventoryPeriods as any, inventoryClosingAuditRecords as any);
     if (result.success) {
       res.json(result.period);
@@ -4680,10 +4461,11 @@ async function startServer() {
     }
   });
 
-  app.post('/api/v1/inventory/periods/:id/reopen', (req: Request, res: Response) => {
+  app.post('/api/v1/inventory/periods/:id/reopen', SecurityEngine.requireRole('Finance Manager', 'Tenant Admin', 'Super Admin'), (req: Request, res: Response) => {
     const { id } = req.params;
-    const userId = req.body.userId || 'Ahmed Mounir';
-    const reason = req.body.reason || 'Period reopening for audit corrections';
+    const userId = getAuthenticatedActor(req);
+    const reason = req.body.reason;
+    if (!reason) return res.status(400).json({ error: 'A reopening reason is required.' });
     const result = InventoryClosingControlEngine.reopenPeriod(id, userId, reason, inventoryPeriods as any, inventoryClosingAuditRecords as any);
     if (result.success) {
       res.json(result.period);
@@ -4697,15 +4479,19 @@ async function startServer() {
     res.json(fiscalInventoryLocks);
   });
 
-  app.post('/api/v1/inventory/fiscal-locks/toggle', (req: Request, res: Response) => {
-    const { targetLevel, targetId, targetName, status, userId, reason } = req.body;
+  app.post('/api/v1/inventory/fiscal-locks/toggle', SecurityEngine.requireRole('Inventory Manager', 'Finance Manager', 'Tenant Admin'), (req: Request, res: Response) => {
+    const { targetLevel, targetId, targetName, status, reason } = req.body;
+    const userId = getAuthenticatedActor(req);
+    if (!targetLevel || !targetId || !targetName || !status || !reason) {
+      return res.status(400).json({ error: 'Lock target, status, and reason are required.' });
+    }
     const lock = InventoryClosingControlEngine.toggleFiscalLock(
-      targetLevel || 'Warehouse',
-      targetId || 'wh-001',
-      targetName || 'Warehouse',
-      status || 'Locked',
-      userId || 'Ahmed Mounir',
-      reason || 'Fiscal inventory lock update',
+      targetLevel,
+      targetId,
+      targetName,
+      status,
+      userId,
+      reason,
       fiscalInventoryLocks as any,
       inventoryClosingAuditRecords as any
     );
@@ -4717,28 +4503,35 @@ async function startServer() {
     res.json(inventoryCountSessions);
   });
 
-  app.post('/api/v1/inventory/count-sessions', (req: Request, res: Response) => {
-    const warehouseId = req.body.warehouseId || 'wh-001';
+  app.post('/api/v1/inventory/count-sessions', SecurityEngine.requireRole('Inventory Manager', 'Tenant Admin'), (req: Request, res: Response) => {
+    const scope = getAuthenticatedScope(req);
+    const warehouseId = req.body.warehouseId;
+    if (!warehouseId) return res.status(400).json({ error: 'warehouseId is required.' });
     const wh = warehouses.find(w => w.id === warehouseId || w.code === warehouseId);
-    const whName = wh ? wh.name : 'Central Warehouse';
+    if (!wh) return res.status(404).json({ error: 'Warehouse not found.' });
+    const whName = wh.name;
 
     // Generate count sheet items automatically from inventory quants
     const whQuants = stockQuants.filter(q => q.warehouseId === warehouseId || warehouseId === 'wh-001');
-    const itemsList = whQuants.length > 0 ? whQuants : inventory.slice(0, 5);
+    if (whQuants.length === 0) return res.status(409).json({ error: 'No persisted inventory quantities exist for this warehouse.' });
+    const itemsList = whQuants;
 
     const sheetItems = itemsList.map((item: any, idx: number) => {
       const invItem = inventory.find(i => i.sku === (item.itemSku || item.sku));
+      if (!invItem?.id || !item.itemSku && !item.sku || !Number.isFinite(Number(item.quantity)) || !Number.isFinite(Number(invItem.costPrice))) {
+        throw new Error('Warehouse inventory record is missing item identity, quantity, or cost.');
+      }
       return {
         id: `csi-${Date.now()}-${idx}`,
-        itemId: invItem?.id || item.itemId || `item-${idx}`,
-        itemSku: item.itemSku || item.sku || 'HW-SRV-01',
-        itemName: invItem?.name || item.itemName || 'Inventory Item',
+        itemId: invItem?.id || item.itemId,
+        itemSku: item.itemSku || item.sku,
+        itemName: invItem?.name || item.itemName,
         warehouseId: item.warehouseId || warehouseId,
         zoneId: item.zoneId,
         binId: item.binId,
         batchNumber: item.batchNumber,
-        bookQuantity: item.quantity !== undefined ? item.quantity : (invItem?.stockQty || 10),
-        unitCost: invItem?.costPrice || 100,
+        bookQuantity: item.quantity,
+        unitCost: invItem?.costPrice,
         isBlindCount: Boolean(req.body.isBlindCount),
         status: 'Pending'
       };
@@ -4749,19 +4542,19 @@ async function startServer() {
     const newSession = {
       id: `cs-${Date.now()}`,
       sessionNumber: `CS-2026-${Math.floor(100 + Math.random() * 900)}`,
-      tenantId: req.body.tenantId || 'ten-001',
-      companyId: req.body.companyId || 'comp-001',
-      branchId: req.body.branchId || 'br-001',
+      tenantId: scope.tenantId,
+      companyId: scope.companyId,
+      branchId: scope.branchId,
       warehouseId,
       warehouseName: whName,
-      title: req.body.title || 'Physical Inventory Count Session',
+      title: req.body.title,
       isBlindCount: Boolean(req.body.isBlindCount),
       status: 'Counting',
       items: sheetItems,
       totalBookValue,
       totalPhysicalValue: 0,
       totalVarianceValue: 0,
-      createdBy: req.body.createdBy || 'Ahmed Mounir',
+      createdBy: scope.userId,
       createdAt: new Date().toISOString()
     };
 
@@ -4769,10 +4562,16 @@ async function startServer() {
     res.status(201).json(newSession);
   });
 
-  app.put('/api/v1/inventory/count-sessions/:id/items', (req: Request, res: Response) => {
+  app.put('/api/v1/inventory/count-sessions/:id/items', SecurityEngine.requireRole('Inventory Manager', 'Tenant Admin'), (req: Request, res: Response) => {
     const { id } = req.params;
     const session = inventoryCountSessions.find(s => s.id === id);
     if (!session) return res.status(404).json({ error: 'Count session not found' });
+    if (session.tenantId !== getAuthenticatedScope(req).tenantId || session.companyId !== getAuthenticatedScope(req).companyId) {
+      return res.status(403).json({ error: 'Count session is outside the authenticated scope.' });
+    }
+    if (session.status !== 'Counting' && session.status !== 'VarianceReview') {
+      return res.status(409).json({ error: `Count session cannot be updated from status '${session.status}'.` });
+    }
 
     const updatedItems = req.body.items || [];
     session.items = updatedItems;
@@ -4797,19 +4596,32 @@ async function startServer() {
     res.json(session);
   });
 
-  app.post('/api/v1/inventory/count-sessions/:id/approve', (req: Request, res: Response) => {
+  app.post('/api/v1/inventory/count-sessions/:id/approve', SecurityEngine.requireRole('Inventory Manager', 'Finance Manager', 'Tenant Admin'), (req: Request, res: Response) => {
     const { id } = req.params;
     const session = inventoryCountSessions.find(s => s.id === id);
     if (!session) return res.status(404).json({ error: 'Count session not found' });
+    const actor = getAuthenticatedActor(req);
+    if (session.tenantId !== getAuthenticatedScope(req).tenantId || session.companyId !== getAuthenticatedScope(req).companyId) {
+      return res.status(403).json({ error: 'Count session is outside the authenticated scope.' });
+    }
+    if (session.status !== 'VarianceReview') {
+      return res.status(409).json({ error: `Count session cannot be approved from status '${session.status}'.` });
+    }
 
     session.status = 'Approved';
-    session.approvedBy = req.body.approvedBy || 'Ahmed Mounir';
+    session.approvedBy = actor;
     session.approvedAt = new Date().toISOString();
 
     // Auto-generate Reconciliation Proposals for any variance items
     session.items.forEach((i: any) => {
       if (i.varianceQuantity && i.varianceQuantity !== 0) {
         const isGain = i.varianceQuantity > 0;
+        const existingProposal = reconciliationProposals.find(p =>
+          p.countSessionId === session.id &&
+          p.itemSku === i.itemSku &&
+          p.status !== 'Cancelled'
+        );
+        if (existingProposal) return;
         const proposal = {
           id: `rec-prop-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           countSessionId: session.id,
@@ -4849,17 +4661,21 @@ async function startServer() {
 
   // Reconciliation Proposals
   app.get('/api/v1/inventory/reconciliation-proposals', (req: Request, res: Response) => {
-    res.json(reconciliationProposals);
+    const scope = getAuthenticatedScope(req);
+    res.json(reconciliationProposals.filter(p => p.tenantId === scope.tenantId && p.companyId === scope.companyId));
   });
 
-  app.post('/api/v1/inventory/reconciliation-proposals/:id/post', (req: Request, res: Response) => {
+  app.post('/api/v1/inventory/reconciliation-proposals/:id/post', SecurityEngine.requireRole('Finance Manager', 'Inventory Manager', 'Tenant Admin'), (req: Request, res: Response) => {
     const { id } = req.params;
     const prop = reconciliationProposals.find(p => p.id === id);
     if (!prop) return res.status(404).json({ error: 'Reconciliation proposal not found' });
-
-    prop.status = 'Posted';
-    prop.approvedBy = req.body.approvedBy || 'Ahmed Mounir';
-    prop.postedAt = new Date().toISOString();
+    const scope = getAuthenticatedScope(req);
+    if (prop.tenantId !== scope.tenantId || prop.companyId !== scope.companyId) {
+      return res.status(403).json({ error: 'Reconciliation proposal is outside the authenticated scope.' });
+    }
+    if (prop.status !== 'Pending') {
+      return res.status(409).json({ error: `Reconciliation proposal is already ${prop.status}.` });
+    }
 
     // Emit Business Event to Financial Integration Queue (NO direct GL creation)
     const enqueueRes = InventoryFinancialIntegrationEngine.enqueueEvent({
@@ -4878,7 +4694,7 @@ async function startServer() {
     }, {
       tenantId: prop.tenantId,
       companyId: prop.companyId,
-      userId: 'usr-001',
+      userId: scope.userId,
       userName: prop.approvedBy,
       mappingRules: eventMappingRules as any,
       postingProfiles: postingProfiles as any,
@@ -4893,6 +4709,9 @@ async function startServer() {
       auditRecords: financialAuditRecords as any
     });
 
+    prop.status = 'Posted';
+    prop.approvedBy = scope.userId;
+    prop.postedAt = new Date().toISOString();
     prop.postedEventId = enqueueRes.queueItem.eventId;
 
     inventoryClosingAuditRecords.unshift({
@@ -6539,15 +6358,21 @@ async function startServer() {
     const { newInvoiceAmount } = req.query;
     const vendor = vendors.find(v => v.id === vendorId);
     if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
+    if (!Number.isFinite(Number(newInvoiceAmount))) {
+      return res.status(400).json({ error: 'newInvoiceAmount is required.' });
+    }
+    if (!Number.isFinite(vendor.creditLimit)) {
+      return res.status(409).json({ error: 'Vendor credit limit is not configured.' });
+    }
 
     const check = AccountsPayableEngine.validateVendorCreditControl(
       vendor.id,
       vendor.code,
       vendor.name,
-      Number(newInvoiceAmount || 0),
+      Number(newInvoiceAmount),
       apVouchers,
-      500000,
-      60,
+      vendor.creditLimit,
+      0,
       vendor.status === 'BLOCKED',
       vendor.status === 'BLOCKED' ? 'Administrative Block' : undefined
     );
@@ -6558,11 +6383,21 @@ async function startServer() {
   // 15. Exchange Rate Difference Readiness
   app.post('/api/v1/ap/exchange-rate-diff', (req: Request, res: Response) => {
     const { docCurrency, docExchangeRate, paymentExchangeRate, documentAmountInDocCurrency } = req.body;
+    if (
+      !docCurrency ||
+      !Number.isFinite(Number(docExchangeRate)) ||
+      !Number.isFinite(Number(paymentExchangeRate)) ||
+      !Number.isFinite(Number(documentAmountInDocCurrency))
+    ) {
+      return res.status(400).json({
+        error: 'docCurrency, docExchangeRate, paymentExchangeRate, and documentAmountInDocCurrency are required.'
+      });
+    }
     const result = AccountsPayableEngine.calculateExchangeRateDifference(
-      docCurrency || 'EUR',
-      Number(docExchangeRate || 1.08),
-      Number(paymentExchangeRate || 1.05),
-      Number(documentAmountInDocCurrency || 10000)
+      docCurrency,
+      Number(docExchangeRate),
+      Number(paymentExchangeRate),
+      Number(documentAmountInDocCurrency)
     );
     res.json(result);
   });
@@ -6570,11 +6405,21 @@ async function startServer() {
   // 16. Early Payment Discount Validation
   app.post('/api/v1/ap/early-discount-check', (req: Request, res: Response) => {
     const { grossAmount, invoiceDate, paymentDate, paymentTermsCode } = req.body;
+    if (
+      !Number.isFinite(Number(grossAmount)) ||
+      !invoiceDate ||
+      !paymentDate ||
+      !paymentTermsCode
+    ) {
+      return res.status(400).json({
+        error: 'grossAmount, invoiceDate, paymentDate, and paymentTermsCode are required.'
+      });
+    }
     const result = AccountsPayableEngine.calculateEarlyPaymentDiscount(
-      Number(grossAmount || 1000),
-      invoiceDate || new Date().toISOString().split('T')[0],
-      paymentDate || new Date().toISOString().split('T')[0],
-      paymentTermsCode || '2/10 Net 30'
+      Number(grossAmount),
+      invoiceDate,
+      paymentDate,
+      paymentTermsCode
     );
     res.json(result);
   });
@@ -6657,6 +6502,14 @@ async function startServer() {
     res.json(employees);
   });
 
+  app.get('/api/v1/hr/payroll/status', (req: Request, res: Response) => {
+    res.status(501).json({
+      status: 'CONFIGURATION_REQUIRED',
+      message: 'Payroll calculation, approval, posting, and WPS output are not configured for this deployment.',
+      required: ['payroll inputs', 'payroll period', 'approval workflow', 'posting profile', 'WPS provider']
+    });
+  });
+
   // ==================== AI COPILOT & EXECUTIVE SUITE ====================
 
   app.post('/api/v1/ai/assistant', async (req: Request, res: Response) => {
@@ -6667,15 +6520,10 @@ async function startServer() {
     }
 
     if (!aiClient) {
-      return res.json({
-        reply: lang === 'ar' 
-          ? 'المساعد الذكي يعمل حالياً بالوضع الداخلي. تم استخراج البيانات المالية والمخزون المربوطة بمحرك الفعاليات المالية بنجاح.'
-          : 'AI Copilot operating in verified enterprise mode. Financial events and posting rules verified across General Ledger.',
-        insights: [
-          'Total Revenue YTD: 1,590,000 SAR processed via Financial Events Engine.',
-          'Double-entry validation rate: 100% compliant across auto-posted journals.',
-          'Posting Rules configured across Sales, Inventory & Procurement.'
-        ]
+      return res.status(503).json({
+        error: lang === 'ar'
+          ? 'خدمة المساعد الذكي غير مهيأة. لم يتم إنشاء ملخصات مالية بديلة.'
+          : 'AI assistant is not configured. No synthetic financial insights are available.'
       });
     }
 
@@ -7237,14 +7085,27 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
   // 10. Multi Currency FX Settlement Readiness
   app.post('/api/v1/ar/settlement-fx', (req: Request, res: Response) => {
     const { invoiceId, receiptId, docCurrency, baseCurrency, invoiceRate, receiptRate, amount } = req.body;
+    if (
+      !invoiceId ||
+      !receiptId ||
+      !docCurrency ||
+      !baseCurrency ||
+      !Number.isFinite(Number(invoiceRate)) ||
+      !Number.isFinite(Number(receiptRate)) ||
+      !Number.isFinite(Number(amount))
+    ) {
+      return res.status(400).json({
+        error: 'invoiceId, receiptId, currencies, invoiceRate, receiptRate, and amount are required.'
+      });
+    }
     const fxResult = AccountsReceivableEngine.calculateSettlementFXDifference(
-      invoiceId || 'sinv-001',
-      receiptId || 'rct-001',
-      docCurrency || 'USD',
-      baseCurrency || 'SAR',
-      Number(invoiceRate || 3.75),
-      Number(receiptRate || 3.76),
-      Number(amount || 10000)
+      invoiceId,
+      receiptId,
+      docCurrency,
+      baseCurrency,
+      Number(invoiceRate),
+      Number(receiptRate),
+      Number(amount)
     );
     res.json(fxResult);
   });
@@ -7257,16 +7118,30 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
   app.post('/api/v1/ar/rev-rec/schedule', (req: Request, res: Response) => {
     const { contractRef, customerId, totalContractValue, obligations, startDate, durationMonths } = req.body;
     const cust = arCustomers.find(c => c.id === customerId);
-    const customerName = cust ? cust.name : 'Enterprise Customer';
+    if (
+      !contractRef ||
+      !customerId ||
+      !cust ||
+      !Number.isFinite(Number(totalContractValue)) ||
+      !Array.isArray(obligations) ||
+      obligations.length === 0 ||
+      !startDate ||
+      !Number.isInteger(Number(durationMonths)) ||
+      Number(durationMonths) <= 0
+    ) {
+      return res.status(400).json({
+        error: 'contractRef, an existing customerId, totalContractValue, obligations, startDate, and a positive durationMonths are required.'
+      });
+    }
 
     const sched = AccountsReceivableEngine.buildRevenueRecognitionSchedule(
-      contractRef || `CNT-${Date.now()}`,
+      contractRef,
       customerId,
-      customerName,
-      Number(totalContractValue || 100000),
-      obligations || ['Software License Delivery', 'SLA Maintenance Support', 'Cloud Hosting Services'],
-      startDate || new Date().toISOString().split('T')[0],
-      durationMonths || 12
+      cust.name,
+      Number(totalContractValue),
+      obligations,
+      startDate,
+      Number(durationMonths)
     );
 
     arRevRecSchedules.unshift(sched);
@@ -7443,7 +7318,7 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
 
   app.post('/api/v1/gl/journals/:id/post', (req: Request, res: Response) => {
     const { id } = req.params;
-    const { approvedBy } = req.body;
+    const approvedBy = (req as any).auth?.sub;
     const journal = glJournals.find(j => j.id === id || j.entryNumber === id);
     if (!journal) return res.status(404).json({ error: 'Journal Entry not found' });
 
@@ -7912,7 +7787,8 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
 
   // 1. Balance Sheet Endpoint (IAS 1)
   app.get('/api/v1/reports/financial/balance-sheet', (req: Request, res: Response) => {
-    const companyId = (req.query.companyId as string) || 'comp-001';
+    const companyId = getAuthenticatedScope(req).companyId;
+    if (req.query.companyId && req.query.companyId !== companyId) return res.status(403).json({ error: 'Company scope violation.' });
     const currency = (req.query.currency as string) || 'SAR';
     const asOfDate = (req.query.asOfDate as string) || new Date().toISOString().split('T')[0];
     const report = FinancialReportingEngine.generateBalanceSheet(glAccounts, companyId, currency, asOfDate);
@@ -7921,7 +7797,8 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
 
   // 2. Income Statement Endpoint (P&L / IAS 1)
   app.get('/api/v1/reports/financial/income-statement', (req: Request, res: Response) => {
-    const companyId = (req.query.companyId as string) || 'comp-001';
+    const companyId = getAuthenticatedScope(req).companyId;
+    if (req.query.companyId && req.query.companyId !== companyId) return res.status(403).json({ error: 'Company scope violation.' });
     const currency = (req.query.currency as string) || 'SAR';
     const startDate = (req.query.startDate as string) || '2026-01-01';
     const endDate = (req.query.endDate as string) || new Date().toISOString().split('T')[0];
@@ -7931,7 +7808,8 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
 
   // 3. Cash Flow Statement Endpoint (IAS 7 Indirect Method)
   app.get('/api/v1/reports/financial/cash-flow', (req: Request, res: Response) => {
-    const companyId = (req.query.companyId as string) || 'comp-001';
+    const companyId = getAuthenticatedScope(req).companyId;
+    if (req.query.companyId && req.query.companyId !== companyId) return res.status(403).json({ error: 'Company scope violation.' });
     const currency = (req.query.currency as string) || 'SAR';
     const startDate = (req.query.startDate as string) || '2026-01-01';
     const endDate = (req.query.endDate as string) || new Date().toISOString().split('T')[0];
@@ -7943,7 +7821,8 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
 
   // 4. Statement of Changes in Equity Endpoint (IAS 1)
   app.get('/api/v1/reports/financial/changes-in-equity', (req: Request, res: Response) => {
-    const companyId = (req.query.companyId as string) || 'comp-001';
+    const companyId = getAuthenticatedScope(req).companyId;
+    if (req.query.companyId && req.query.companyId !== companyId) return res.status(403).json({ error: 'Company scope violation.' });
     const currency = (req.query.currency as string) || 'SAR';
     const endDate = (req.query.endDate as string) || new Date().toISOString().split('T')[0];
     const bs = FinancialReportingEngine.generateBalanceSheet(glAccounts, companyId, currency, endDate);
@@ -7956,7 +7835,8 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
   app.get('/api/v1/reports/trial-balance', (req: Request, res: Response) => {
     const type = (req.query.type as any) || 'STANDARD';
     const asOfDate = (req.query.asOfDate as string) || new Date().toISOString().split('T')[0];
-    const companyId = (req.query.companyId as string) || 'comp-001';
+    const companyId = getAuthenticatedScope(req).companyId;
+    if (req.query.companyId && req.query.companyId !== companyId) return res.status(403).json({ error: 'Company scope violation.' });
     const currency = (req.query.currency as string) || 'SAR';
     const report = FinancialReportingEngine.generateTrialBalance(glAccounts, type, asOfDate, companyId, currency);
     res.json(report);
@@ -7964,7 +7844,8 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
 
   // 6. Financial Ratios Endpoint
   app.get('/api/v1/reports/ratios', (req: Request, res: Response) => {
-    const companyId = (req.query.companyId as string) || 'comp-001';
+    const companyId = getAuthenticatedScope(req).companyId;
+    if (req.query.companyId && req.query.companyId !== companyId) return res.status(403).json({ error: 'Company scope violation.' });
     const currency = (req.query.currency as string) || 'SAR';
     const asOfDate = (req.query.asOfDate as string) || new Date().toISOString().split('T')[0];
     const bs = FinancialReportingEngine.generateBalanceSheet(glAccounts, companyId, currency, asOfDate);
@@ -7975,7 +7856,8 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
 
   // 7. Executive Dashboard Endpoint
   app.get('/api/v1/reports/executive-dashboard', (req: Request, res: Response) => {
-    const companyId = (req.query.companyId as string) || 'comp-001';
+    const companyId = getAuthenticatedScope(req).companyId;
+    if (req.query.companyId && req.query.companyId !== companyId) return res.status(403).json({ error: 'Company scope violation.' });
     const currency = (req.query.currency as string) || 'SAR';
     const asOfDate = (req.query.asOfDate as string) || new Date().toISOString().split('T')[0];
     const bs = FinancialReportingEngine.generateBalanceSheet(glAccounts, companyId, currency, asOfDate);
@@ -7988,47 +7870,27 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
   app.get('/api/v1/reports/budget-vs-actual', (req: Request, res: Response) => {
     const budgetId = (req.query.budgetId as string) || 'bgt-2026-01';
     const fiscalYear = Number(req.query.fiscalYear) || 2026;
-    const mockVersion = {
-      id: budgetId,
-      tenantId: 'tenant-001',
-      companyId: 'comp-001',
-      code: 'BGT-2026-V1',
-      name: 'FY2026 Master Operating Budget',
-      fiscalYear,
-      status: 'APPROVED' as const,
-      versionType: 'ORIGINAL' as const,
-      createdAt: new Date().toISOString()
-    };
-    const mockItems = [
-      { id: 'bi-1', budgetId, accountCode: '4000', accountName: 'Sales Revenue', totalBudgetAmount: 500000, monthlyAllocations: {} },
-      { id: 'bi-2', budgetId, accountCode: '5000', accountName: 'Cost of Goods Sold', totalBudgetAmount: 230000, monthlyAllocations: {} },
-      { id: 'bi-3', budgetId, accountCode: '6010', accountName: 'Salaries Expense', totalBudgetAmount: 90000, monthlyAllocations: {} },
-      { id: 'bi-4', budgetId, accountCode: '6020', accountName: 'Rent Expense', totalBudgetAmount: 35000, monthlyAllocations: {} }
-    ];
-    const report = FinancialReportingEngine.generateBudgetVsActualReport(mockVersion, mockItems, glAccounts);
-    res.json(report);
+    res.status(404).json({
+      success: false,
+      error: 'Budget data is not available for the requested budget and fiscal year.',
+      budgetId,
+      fiscalYear
+    });
   });
 
   // 9. Cost Center Performance Endpoint
   app.get('/api/v1/reports/cost-centers', (req: Request, res: Response) => {
-    const mockCC = [
-      { id: 'cc-001', code: 'CC-ADM', name: 'Executive Administration', departmentName: 'Executive' },
-      { id: 'cc-002', code: 'CC-FIN', name: 'Financial Control & Accounting', departmentName: 'Finance' },
-      { id: 'cc-003', code: 'CC-LOG', name: 'Warehouse & Supply Chain Logistics', departmentName: 'Supply Chain' },
-      { id: 'cc-004', code: 'CC-SLS', name: 'Commercial Sales & Marketing', departmentName: 'Sales' }
-    ];
-    const report = FinancialReportingEngine.generateCostCenterReport(mockCC);
+    const scope = getAuthenticatedScope(req);
+    const scopedCostCenters = costCenters.filter(center => center.tenantId === scope.tenantId && center.companyId === scope.companyId);
+    const report = FinancialReportingEngine.generateCostCenterReport(scopedCostCenters);
     res.json(report);
   });
 
   // 10. Profit Center Performance Endpoint
   app.get('/api/v1/reports/profit-centers', (req: Request, res: Response) => {
-    const mockPC = [
-      { id: 'pc-001', code: 'PC-RETAIL', name: 'Retail Business Unit' },
-      { id: 'pc-002', code: 'PC-WHOLESALE', name: 'Wholesale Commercial Division' },
-      { id: 'pc-003', code: 'PC-SERVICES', name: 'Enterprise Professional Services' }
-    ];
-    const report = FinancialReportingEngine.generateProfitCenterReport(mockPC);
+    const scope = getAuthenticatedScope(req);
+    const scopedProfitCenters = profitCenters.filter(center => center.tenantId === scope.tenantId && center.companyId === scope.companyId);
+    const report = FinancialReportingEngine.generateProfitCenterReport(scopedProfitCenters);
     res.json(report);
   });
 
@@ -11936,220 +11798,6 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     res.json({ success: true, wizardState: updated });
   });
 
-  // ============================================================================
-  // ENTERPRISE ONBOARDING WIZARD & CERTIFICATION ENDPOINTS (P0-07)
-  // ============================================================================
-
-  // Get full onboarding wizard state & definitions
-  app.get('/api/v1/onboarding/wizard/state', (req: Request, res: Response) => {
-    const targetCompany = (req.query.companyId as string) || (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
-    const targetTenant = (req.query.tenantId as string) || (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
-
-    // Anti-IDOR: If authenticated with a Bearer token, enforce cross-tenant boundary
-    if ((req as any).auth && (req as any).auth.tenantId && (req as any).auth.tenantId !== targetTenant) {
-      return res.status(403).json({
-        success: false,
-        error: 'Forbidden: Cannot access wizard state of another tenant.',
-        code: 'CROSS_TENANT_ACCESS_DENIED'
-      });
-    }
-
-    const manager = IndustryVerticalManager.getInstance(pilotDb);
-    const wizardState = manager.getWizardStepsForCompany(targetCompany, targetTenant);
-    const readiness = manager.evaluateReadiness(targetCompany, targetTenant);
-
-    res.json({
-      success: true,
-      wizardState,
-      readiness
-    });
-  });
-
-  // Save / advance individual onboarding step
-  app.post('/api/v1/onboarding/wizard/step', (req: Request, res: Response) => {
-    const { stepNumber, payload, companyId, tenantId } = req.body;
-    const targetCompany = companyId || (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
-    const targetTenant = tenantId || (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
-
-    if ((req as any).auth && (req as any).auth.tenantId && (req as any).auth.tenantId !== targetTenant) {
-      return res.status(403).json({
-        success: false,
-        error: 'Forbidden: Cannot modify wizard state of another tenant.',
-        code: 'CROSS_TENANT_ACCESS_DENIED'
-      });
-    }
-
-    if (!stepNumber || typeof stepNumber !== 'number' || stepNumber < 1 || stepNumber > 19) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid step number. Must be between 1 and 19.'
-      });
-    }
-
-    const manager = IndustryVerticalManager.getInstance(pilotDb);
-    const result = manager.advanceWizardStep({
-      companyId: targetCompany,
-      stepNumber,
-      stepData: payload || {}
-    });
-
-    if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        error: 'Step validation failed.',
-        errors: result.errors,
-        currentStep: result.currentStep
-      });
-    }
-
-    const wizardState = manager.getWizardStepsForCompany(targetCompany, targetTenant);
-    res.json({
-      success: true,
-      currentStep: result.currentStep,
-      isCompleted: result.isCompleted,
-      wizardState
-    });
-  });
-
-  // Deterministic readiness evaluation (Phase 5)
-  app.get('/api/v1/onboarding/readiness', (req: Request, res: Response) => {
-    const targetCompany = (req.query.companyId as string) || (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
-    const targetTenant = (req.query.tenantId as string) || (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
-
-    if ((req as any).auth && (req as any).auth.tenantId && (req as any).auth.tenantId !== targetTenant) {
-      return res.status(403).json({
-        success: false,
-        error: 'Forbidden: Cannot access readiness of another tenant.',
-        code: 'CROSS_TENANT_ACCESS_DENIED'
-      });
-    }
-
-    const manager = IndustryVerticalManager.getInstance(pilotDb);
-    const report = manager.evaluateReadiness(targetCompany, targetTenant);
-
-    res.json({
-      success: true,
-      report
-    });
-  });
-
-  // Final readiness review and explicit completion
-  app.post('/api/v1/onboarding/wizard/complete', (req: Request, res: Response) => {
-    const { companyId, tenantId } = req.body;
-    const targetCompany = companyId || (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
-    const targetTenant = tenantId || (req as any).auth?.tenantId || (req.headers['x-tenant-id'] as string) || 'ten-001';
-
-    if ((req as any).auth && (req as any).auth.tenantId && (req as any).auth.tenantId !== targetTenant) {
-      return res.status(403).json({
-        success: false,
-        error: 'Forbidden: Cannot complete onboarding for another tenant.',
-        code: 'CROSS_TENANT_ACCESS_DENIED'
-      });
-    }
-
-    const manager = IndustryVerticalManager.getInstance(pilotDb);
-    const operatorUser = (req as any).user || { id: 'usr-admin-01', name: 'Enterprise Administrator', email: 'admin@enterprise.pilot' };
-
-    try {
-      const outcome = manager.completeOnboardingWizard({
-        companyId: targetCompany,
-        tenantId: targetTenant,
-        operatorUser
-      });
-
-      // Synchronize in-memory collections with newly materialized records
-      const syncdComp = pilotDb.getEntity<Company>('companies', targetCompany);
-      if (syncdComp && !companies.some(c => c.id === syncdComp.id)) {
-        companies.push(syncdComp);
-      }
-      const syncdTenant = pilotDb.getEntity<Tenant>('tenants', targetTenant);
-      if (syncdTenant && !tenants.some(t => t.id === syncdTenant.id)) {
-        tenants.push(syncdTenant);
-      }
-
-      recordAudit(
-        targetTenant,
-        operatorUser.id,
-        operatorUser.name,
-        'Tenant Admin',
-        'APPROVE',
-        'OnboardingWizard',
-        outcome.certificate.certificateId,
-        `Certified and launched pilot tenant ${targetTenant} / ${targetCompany} with score ${outcome.certificate.readinessScore}%`
-      );
-
-      res.json({
-        success: true,
-        certificate: outcome.certificate,
-        report: outcome.report
-      });
-    } catch (err: any) {
-      console.error('Onboarding completion error:', err);
-      res.status(500).json({
-        success: false,
-        error: err.message || 'Internal server error during onboarding materialization.',
-        correlationId: `err-${Date.now()}`
-      });
-    }
-  });
-
-  // Initialize a fresh unconfigured tenant and company for testing or onboarding
-  app.post('/api/v1/onboarding/tenant/initialize', (req: Request, res: Response) => {
-    const { tenantName, companyName, tenantCode, companyCode, profileId } = req.body;
-    const tId = `ten-${Date.now()}`;
-    const cId = `comp-${Date.now()}`;
-
-    const newTenant: Tenant = {
-      id: tId,
-      name: tenantName || 'New Pilot Enterprise Tenant',
-      code: tenantCode || `TEN-${Date.now().toString().slice(-4)}`,
-      edition: 'Enterprise',
-      ownerEmail: 'admin@newenterprise.pilot',
-      active: true,
-      createdAt: new Date().toISOString()
-    };
-
-    const newComp: Company = {
-      id: cId,
-      tenantId: tId,
-      name: companyName || 'New Pilot Enterprise Company',
-      nameAr: 'شركة تجريبية جديدة',
-      code: companyCode || `COMP-${Date.now().toString().slice(-4)}`,
-      taxNumber: '',
-      currency: 'SAR',
-      country: 'Saudi Arabia',
-      countryCode: 'SA',
-      fiscalYearStart: '01-01',
-      address: ''
-    };
-
-    pilotDb.saveEntity('tenants', newTenant, tId, cId);
-    pilotDb.saveEntity('companies', newComp, tId, cId);
-    tenants.push(newTenant);
-    companies.push(newComp);
-
-    // Initial uncompleted profile state
-    const unconfiguredState = {
-      id: cId,
-      companyId: cId,
-      tenantId: tId,
-      activeProfileId: profileId || 'COMMERCIAL_DISTRIBUTION',
-      activatedAt: new Date().toISOString(),
-      activatedBy: 'SYSTEM',
-      wizardCompleted: false,
-      wizardCurrentStep: 1,
-      wizardData: {}
-    };
-    pilotDb.saveEntity('company_active_vertical_profiles', unconfiguredState, tId, cId);
-
-    res.status(201).json({
-      success: true,
-      tenant: newTenant,
-      company: newComp,
-      state: unconfiguredState
-    });
-  });
-
   // Profile 01: Commercial Distribution
   app.get('/api/v1/vertical/distribution/territories', (req: Request, res: Response) => {
     const authCompany = (req as any).auth?.companyId || (req.headers['x-company-id'] as string) || 'comp-001';
@@ -13372,7 +13020,7 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     }
   });
 
-  app.post('/api/v1/mfg/boms/:id/approve', (req: Request, res: Response) => {
+  app.post('/api/v1/mfg/boms/:id/approve', SecurityEngine.requireRole('Finance Manager', 'Procurement Manager', 'Tenant Admin'), (req: Request, res: Response) => {
     try {
       const bom = manufacturingBOMs.find(b => b.id === req.params.id);
       if (!bom) throw new Error('BOM not found');
@@ -13444,27 +13092,43 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     }
   });
 
-  app.post('/api/v1/mfg/work-orders', (req: Request, res: Response) => {
+  app.post('/api/v1/mfg/work-orders', SecurityEngine.requireRole('Inventory Manager', 'Tenant Admin'), (req: Request, res: Response) => {
     try {
-      const { bomId, routingId, plannedQuantity, uom, plannedStartDate, plannedEndDate, targetWarehouseId, createdBy, finishedGoodSku, finishedGoodName } = req.body;
+      const { bomId, routingId, plannedQuantity, uom, plannedStartDate, plannedEndDate, targetWarehouseId, finishedGoodSku, finishedGoodName } = req.body;
+      const createdBy = (req as any).auth?.sub;
+      if (
+        !bomId ||
+        !routingId ||
+        !req.body.tenantId ||
+        !req.body.companyId ||
+        !Number.isFinite(Number(plannedQuantity)) ||
+        Number(plannedQuantity) <= 0 ||
+        !uom ||
+        !plannedStartDate ||
+        !plannedEndDate ||
+        !targetWarehouseId ||
+        !createdBy
+      ) {
+        throw new Error('BOM, routing, planned quantity, dates, warehouse, unit, and creator are required');
+      }
       const bom = manufacturingBOMs.find(b => b.id === bomId);
       if (!bom) throw new Error('BOM not found');
       const routing = manufacturingRoutings.find(r => r.id === routingId);
       if (!routing) throw new Error('Routing not found');
 
       const wo = ManufacturingEngine.createWorkOrder({
-        tenantId: req.body.tenantId || 'tenant-am-global',
-        companyId: req.body.companyId || 'comp-egypt-01',
+        tenantId: req.body.tenantId,
+        companyId: req.body.companyId,
         finishedGoodSku: finishedGoodSku || bom.finishedGoodSku,
         finishedGoodName: finishedGoodName || bom.finishedGoodName,
         bom,
         routing,
         workCenters: manufacturingWorkCenters,
         plannedQuantity: Number(plannedQuantity),
-        uom: uom || 'EA',
+        uom,
         plannedStartDate,
         plannedEndDate,
-        targetWarehouseId: targetWarehouseId || 'WH-FG-01',
+        targetWarehouseId,
         createdBy
       });
       manufacturingWorkOrders.push(wo);
@@ -13474,11 +13138,11 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     }
   });
 
-  app.post('/api/v1/mfg/work-orders/:id/release', (req: Request, res: Response) => {
+  app.post('/api/v1/mfg/work-orders/:id/release', SecurityEngine.requireRole('Inventory Manager', 'Tenant Admin'), (req: Request, res: Response) => {
     try {
       const wo = manufacturingWorkOrders.find(w => w.id === req.params.id);
       if (!wo) throw new Error('Work Order not found');
-      const { releasedBy } = req.body;
+      const releasedBy = (req as any).auth?.sub;
       const released = ManufacturingEngine.releaseWorkOrder(wo, releasedBy);
       const idx = manufacturingWorkOrders.findIndex(w => w.id === req.params.id);
       manufacturingWorkOrders[idx] = released;
@@ -13501,11 +13165,12 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     }
   });
 
-  app.post('/api/v1/mfg/work-orders/:id/issue-materials', (req: Request, res: Response) => {
+  app.post('/api/v1/mfg/work-orders/:id/issue-materials', SecurityEngine.requireRole('Inventory Manager', 'Tenant Admin'), (req: Request, res: Response) => {
     try {
       const wo = manufacturingWorkOrders.find(w => w.id === req.params.id);
       if (!wo) throw new Error('Work Order not found');
-      const { issuedBy, issueType, items } = req.body;
+      const { issueType, items } = req.body;
+      const issuedBy = (req as any).auth?.sub;
       const { updatedWorkOrder, goodsIssueRecord, financialEvent } = ManufacturingEngine.issueMaterialsToWorkOrder({
         workOrder: wo,
         issuedBy,
@@ -13521,7 +13186,7 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     }
   });
 
-  app.post('/api/v1/mfg/work-orders/:id/confirm-operation', (req: Request, res: Response) => {
+  app.post('/api/v1/mfg/work-orders/:id/confirm-operation', SecurityEngine.requireRole('Inventory Manager', 'Tenant Admin'), (req: Request, res: Response) => {
     try {
       const wo = manufacturingWorkOrders.find(w => w.id === req.params.id);
       if (!wo) throw new Error('Work Order not found');
@@ -13550,16 +13215,17 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     }
   });
 
-  app.post('/api/v1/mfg/work-orders/:id/receive-finished-goods', (req: Request, res: Response) => {
+  app.post('/api/v1/mfg/work-orders/:id/receive-finished-goods', SecurityEngine.requireRole('Inventory Manager', 'Tenant Admin'), (req: Request, res: Response) => {
     try {
       const wo = manufacturingWorkOrders.find(w => w.id === req.params.id);
       if (!wo) throw new Error('Work Order not found');
-      const { receivedQuantity, receivedBy, destinationWarehouseId } = req.body;
+      const { receivedQuantity, destinationWarehouseId } = req.body;
+      const receivedBy = (req as any).auth?.sub;
       const { updatedWorkOrder, goodsReceiptRecord, financialEvent } = ManufacturingEngine.receiveFinishedGoods({
         workOrder: wo,
         receivedQuantity: Number(receivedQuantity),
         receivedBy,
-        destinationWarehouseId: destinationWarehouseId || 'WH-FG-01'
+        destinationWarehouseId
       });
       const idx = manufacturingWorkOrders.findIndex(w => w.id === req.params.id);
       manufacturingWorkOrders[idx] = updatedWorkOrder;
@@ -13570,11 +13236,11 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     }
   });
 
-  app.post('/api/v1/mfg/work-orders/:id/settle', (req: Request, res: Response) => {
+  app.post('/api/v1/mfg/work-orders/:id/settle', SecurityEngine.requireRole('Finance Manager', 'Inventory Manager', 'Tenant Admin'), (req: Request, res: Response) => {
     try {
       const wo = manufacturingWorkOrders.find(w => w.id === req.params.id);
       if (!wo) throw new Error('Work Order not found');
-      const { settledBy } = req.body;
+      const settledBy = (req as any).auth?.sub;
       const { updatedWorkOrder, financialEvent } = ManufacturingEngine.settleAndCloseWorkOrder({
         workOrder: wo,
         settledBy
@@ -13592,10 +13258,10 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     try {
       const { demands, currentStockMap } = req.body;
       const report = ManufacturingEngine.runMRP({
-        tenantId: req.body.tenantId || 'tenant-am-global',
-        companyId: req.body.companyId || 'comp-egypt-01',
-        demands: demands || [],
-        currentStockMap: currentStockMap || {},
+        tenantId: req.body.tenantId,
+        companyId: req.body.companyId,
+        demands,
+        currentStockMap,
         allBOMs: manufacturingBOMs
       });
       manufacturingMRPReports.push(report);
@@ -16158,6 +15824,8 @@ Keep your response clear, structured with key bullet points, numbers, and recomm
     res.json({ success: true, timesheet: ts });
   });
 
+  app.use('/api', apiNotFoundMiddleware);
+  app.use(apiErrorMiddleware);
 
 
   // ==================== VITE & PRODUCTION MIDDLEWARE ====================

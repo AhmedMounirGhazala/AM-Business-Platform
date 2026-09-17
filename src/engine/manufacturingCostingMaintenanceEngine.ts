@@ -130,9 +130,16 @@ export class ManufacturingCostingMaintenanceEngine {
 
     for (const op of params.routing.operations) {
       const wc = params.workCenters.find(w => w.id === op.workCenterId || w.workCenterCode === op.workCenterCode);
-      const laborRate = wc?.hourlyLaborRate || 0;
-      const machineRate = wc?.hourlyMachineRate || 0;
-      const overheadRate = wc?.hourlyOverheadRate || 0;
+      if (!wc) {
+        throw new Error(`Work center '${op.workCenterCode || op.workCenterId}' is required for costing`);
+      }
+      const rates = [wc.hourlyLaborRate, wc.hourlyMachineRate, wc.hourlyOverheadRate];
+      if (rates.some(rate => !Number.isFinite(rate) || rate < 0)) {
+        throw new Error(`Valid labor, machine, and overhead rates are required for work center '${wc.workCenterCode}'`);
+      }
+      const laborRate = wc.hourlyLaborRate;
+      const machineRate = wc.hourlyMachineRate;
+      const overheadRate = wc.hourlyOverheadRate;
 
       const setupHours = op.setupTimeHours || 0;
       const runHoursTotal = (op.runTimeHoursPerUnit || 0) * lotSize;

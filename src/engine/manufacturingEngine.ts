@@ -556,6 +556,12 @@ export class ManufacturingEngine {
     if (!items || items.length === 0) {
       throw new Error('At least one component item must be specified for Goods Issue');
     }
+    if (!issuedBy?.trim()) {
+      throw new Error('Issued-by user is required for Goods Issue');
+    }
+    if (!['MANUAL_STAGING', 'BACKFLUSH'].includes(issueType)) {
+      throw new Error('A valid Goods Issue type is required');
+    }
 
     this.issueCounter += 1;
     const issueNumber = `GI-PROD-${new Date().getFullYear()}-${String(this.issueCounter).padStart(5, '0')}`;
@@ -575,6 +581,12 @@ export class ManufacturingEngine {
       }
 
       const mat = updatedMaterials[matIndex];
+      const remainingRequired = mat.requiredQuantity - mat.issuedQuantity;
+      if (item.quantity > remainingRequired) {
+        throw new Error(
+          `Issue quantity for SKU '${item.componentSku}' exceeds the remaining BOM allocation of ${remainingRequired}`
+        );
+      }
       const newIssuedQty = mat.issuedQuantity + item.quantity;
       const itemCost = Number((item.quantity * mat.unitCost).toFixed(2));
       totalIssuedValue += itemCost;
@@ -583,7 +595,7 @@ export class ManufacturingEngine {
       updatedMaterials[matIndex] = {
         ...mat,
         issuedQuantity: newIssuedQty,
-        reservedQuantity: Math.max(0, mat.reservedQuantity - item.quantity),
+        reservedQuantity: mat.reservedQuantity - item.quantity,
         totalActualCost: Number((mat.totalActualCost + itemCost).toFixed(2))
       };
 
@@ -685,11 +697,17 @@ export class ManufacturingEngine {
     if (workOrder.status !== 'IN_PROGRESS') {
       throw new Error(`Cannot confirm operations on Work Order with status '${workOrder.status}'. Order must be IN_PROGRESS.`);
     }
+    if (!operatorId?.trim() || !operatorName?.trim()) {
+      throw new Error('A valid operator is required for operation confirmation');
+    }
     if (confirmedGoodQuantity < 0 || confirmedScrapQuantity < 0) {
       throw new Error('Confirmed quantities cannot be negative');
     }
     if (actualLaborHours < 0 || actualMachineHours < 0) {
       throw new Error('Actual labor or machine hours cannot be negative');
+    }
+    if (confirmedGoodQuantity + confirmedScrapQuantity > workOrder.plannedQuantity) {
+      throw new Error('Confirmed output cannot exceed the Work Order planned quantity');
     }
 
     const op = routing.operations.find(o => o.operationNumber === operationNumber);
@@ -709,6 +727,9 @@ export class ManufacturingEngine {
     const wc = workCenters.find(w => w.workCenterCode === op.workCenterCode);
     if (!wc) {
       throw new Error(`Work center '${op.workCenterCode}' not found`);
+    }
+    if (workOrder.operationConfirmations.some(c => c.operationNumber === operationNumber)) {
+      throw new Error(`Operation '${operationNumber}' has already been confirmed; use a correction workflow instead`);
     }
 
     // Cost absorption: Labor + Machine + Overhead
@@ -770,11 +791,22 @@ export class ManufacturingEngine {
   } {
     const { workOrder, receivedQuantity, receivedBy, destinationWarehouseId } = params;
 
-    if (workOrder.status !== 'IN_PROGRESS' && workOrder.status !== 'RELEASED') {
+    if (workOrder.status !== 'IN_PROGRESS') {
       throw new Error(`Cannot receive finished goods for Work Order with status '${workOrder.status}'.`);
     }
     if (receivedQuantity <= 0) {
       throw new Error('Received quantity must be greater than zero');
+    }
+    if (!receivedBy?.trim() || !destinationWarehouseId?.trim()) {
+      throw new Error('Received-by user and destination warehouse are required');
+    }
+
+    const confirmedOutput = workOrder.operationConfirmations.reduce(
+      (total, confirmation) => total + confirmation.confirmedGoodQuantity,
+      0
+    );
+    if (workOrder.operationConfirmations.length === 0 || receivedQuantity > confirmedOutput - workOrder.completedQuantity) {
+      throw new Error('Finished goods receipt exceeds confirmed production output');
     }
 
     const newCompletedQuantity = workOrder.completedQuantity + receivedQuantity;
@@ -788,6 +820,9 @@ export class ManufacturingEngine {
     // Standard Cost Valuation per Unit
     const unitValuationCost = workOrder.costSummary.standardCostPerUnit;
     const totalReceiptValue = Number((receivedQuantity * unitValuationCost).toFixed(2));
+    if (totalReceiptValue > workOrder.costSummary.wipBalance) {
+      throw new Error('Finished goods receipt value exceeds the available WIP balance');
+    }
 
     // Reduce WIP balance by standard receipt value
     const updatedCostSummary: WorkOrderCostSummary = {
@@ -947,7 +982,14 @@ export class ManufacturingEngine {
       demandDate: string;
       demandSource: string;
     }[];
-    currentStockMap: Record<string, { onHand: number; reserved: number; safetyStock: number; leadTimeDays: number; isManufactured: boolean }>;
+    currentStockMap: Record<string, {
+      onHand: number;
+      reserved: number;
+      safetyStock: number;
+      leadTimeDays: number;
+      isManufactured: boolean;
+      purchaseUnitCost?: number;
+    }>;
     allBOMs: BillOfMaterials[];
   }): MRPSummaryReport {
     this.mrpRunCounter += 1;
@@ -960,13 +1002,13 @@ export class ManufacturingEngine {
 
     for (const demand of params.demands) {
       grossRequirementsEvaluated += demand.demandQuantity;
-      const stockInfo = params.currentStockMap[demand.sku] || {
-        onHand: 0,
-        reserved: 0,
-        safetyStock: 0,
-        leadTimeDays: 7,
-        isManufactured: false
-      };
+      const stockInfo = params.currentStockMap[demand.sku];
+      if (!stockInfo) {
+        throw new Error(`MRP planning data is missing for demanded SKU '${demand.sku}'`);
+      }
+      if (!Number.isFinite(stockInfo.leadTimeDays) || stockInfo.leadTimeDays < 0) {
+        throw new Error(`MRP lead time is not configured for SKU '${demand.sku}'`);
+      }
 
       const availableStock = stockInfo.onHand - stockInfo.reserved;
       const netDeficit = (demand.demandQuantity + stockInfo.safetyStock) - availableStock;
@@ -979,7 +1021,10 @@ export class ManufacturingEngine {
         if (stockInfo.isManufactured) {
           plannedProdCount += 1;
           const bom = params.allBOMs.find(b => b.finishedGoodSku === demand.sku && b.status === 'ACTIVE');
-          const estUnitCost = bom ? bom.components.reduce((acc, c) => acc + (c.costPerUnit * c.quantityPerUnit), 0) : 50;
+          if (!bom) {
+            throw new Error(`Active BOM is required for manufactured SKU '${demand.sku}'`);
+          }
+          const estUnitCost = bom.components.reduce((acc, c) => acc + (c.costPerUnit * c.quantityPerUnit), 0);
           const estTotalCost = Number((netDeficit * estUnitCost).toFixed(2));
           totalPlannedExpenditure += estTotalCost;
 
@@ -1002,13 +1047,13 @@ export class ManufacturingEngine {
           if (bom) {
             const exploded = this.explodeBOM(bom, netDeficit, params.allBOMs);
             for (const compItem of exploded) {
-              const compStock = params.currentStockMap[compItem.componentSku] || {
-                onHand: 0,
-                reserved: 0,
-                safetyStock: 0,
-                leadTimeDays: 5,
-                isManufactured: false
-              };
+              const compStock = params.currentStockMap[compItem.componentSku];
+              if (!compStock) {
+                throw new Error(`MRP planning data is missing for component SKU '${compItem.componentSku}'`);
+              }
+              if (!Number.isFinite(compStock.leadTimeDays) || compStock.leadTimeDays < 0) {
+                throw new Error(`MRP lead time is not configured for component SKU '${compItem.componentSku}'`);
+              }
               const compAvail = compStock.onHand - compStock.reserved;
               const compDeficit = (compItem.netQuantityRequired + compStock.safetyStock) - compAvail;
 
@@ -1038,7 +1083,10 @@ export class ManufacturingEngine {
         } else {
           // Direct purchased item deficit
           plannedPurchCount += 1;
-          const estCost = Number((netDeficit * 25).toFixed(2));
+          if (!Number.isFinite(stockInfo.purchaseUnitCost) || stockInfo.purchaseUnitCost < 0) {
+            throw new Error(`Purchase cost is not configured for SKU '${demand.sku}'`);
+          }
+          const estCost = Number((netDeficit * stockInfo.purchaseUnitCost).toFixed(2));
           totalPlannedExpenditure += estCost;
 
           plannedOrders.push({

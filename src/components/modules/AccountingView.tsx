@@ -165,24 +165,26 @@ export const AccountingView: React.FC = () => {
   const netIncome = totalRevenue - totalExpenses;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="report-shell p-6 space-y-7">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            <span>{isAr ? 'المحاسبة المالية ومحرك القيود الآلية (Event-Driven GL)' : 'Financial Accounting & Event-Driven General Ledger'}</span>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-navy text-brand-gold shadow-sm">
+              <Calculator className="w-5 h-5" />
+            </span>
+            <span>{isAr ? 'المحاسبة المالية' : 'Financial accounting'}</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {isAr ? 'تنشأ قيود اليومية آلياً من الفعاليات التجارية وقواعد الترحيل (Posting Rules) دون إدخال يدوي مباشر' : 'Journal Entries are derived automatically from Business Events via Configurable Posting Rules'}
+            {isAr ? 'إدارة الحسابات والقيود والتقارير المالية من سجل موحد.' : 'Manage accounts, journals, and financial reports from one ledger.'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsCreateJeOpen(true)}
-            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer"
+            className="btn-am-primary flex items-center gap-1.5 text-xs px-3.5 py-2 rounded-lg shadow-sm cursor-pointer"
           >
             <PlusCircle className="w-4 h-4" />
             <span>{isAr ? 'قيد تعديل يدوي استثنائي' : 'Manual Adjusting Entry'}</span>
@@ -191,21 +193,21 @@ export const AccountingView: React.FC = () => {
       </div>
 
       {/* Sub Tabs */}
-      <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold w-fit flex-wrap">
+      <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-1.5 rounded-xl text-xs font-semibold w-fit flex-wrap border border-slate-200/70 dark:border-slate-700/70">
         <button
           onClick={() => setSubTab('gl_engine')}
           className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 font-bold ${
-            subTab === 'gl_engine' ? 'bg-[#0B1F3A] text-[#F28C28] shadow-xs' : 'text-slate-600 dark:text-slate-400'
+            subTab === 'gl_engine' ? 'bg-brand-navy text-brand-gold shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-700/60'
           }`}
         >
           <Activity className="w-3.5 h-3.5" />
-          <span>{isAr ? 'محرك دفتر الأستاذ العام وإغلاق الحسابات' : 'GL Engine & Financial Closing'}</span>
+          <span>{isAr ? 'دفتر الأستاذ العام وإغلاق الحسابات' : 'General Ledger & Financial Closing'}</span>
         </button>
 
         <button
           onClick={() => setSubTab('journals')}
           className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
-            subTab === 'journals' ? 'bg-[#0B1F3A] text-[#F28C28] shadow-xs' : 'text-slate-600 dark:text-slate-400'
+            subTab === 'journals' ? 'bg-brand-navy text-brand-gold shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-700/60'
           }`}
         >
           <FileText className="w-3.5 h-3.5" />
@@ -215,17 +217,17 @@ export const AccountingView: React.FC = () => {
         <button
           onClick={() => setSubTab('postingRules')}
           className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
-            subTab === 'postingRules' ? 'bg-[#0B1F3A] text-[#F28C28] shadow-xs' : 'text-slate-600 dark:text-slate-400'
+            subTab === 'postingRules' ? 'bg-brand-navy text-brand-gold shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-700/60'
           }`}
         >
           <Sliders className="w-3.5 h-3.5" />
-          <span>{isAr ? 'قواعد الترحيل الآلي' : 'Posting Rules Engine'}</span>
+          <span>{isAr ? 'قواعد الترحيل الآلي' : 'Automated Posting Rules'}</span>
         </button>
 
         <button
           onClick={() => setSubTab('financialEvents')}
           className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
-            subTab === 'financialEvents' ? 'bg-[#0B1F3A] text-[#F28C28] shadow-xs' : 'text-slate-600 dark:text-slate-400'
+            subTab === 'financialEvents' ? 'bg-brand-navy text-brand-gold shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-700/60'
           }`}
         >
           <Zap className="w-3.5 h-3.5" />
@@ -235,7 +237,7 @@ export const AccountingView: React.FC = () => {
         <button
           onClick={() => setSubTab('coa')}
           className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-            subTab === 'coa' ? 'bg-[#0B1F3A] text-[#F28C28] shadow-xs' : 'text-slate-600 dark:text-slate-400'
+            subTab === 'coa' ? 'bg-brand-navy text-brand-gold shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-700/60'
           }`}
         >
           {isAr ? 'دليل الحسابات' : 'Chart of Accounts'}
@@ -244,7 +246,7 @@ export const AccountingView: React.FC = () => {
         <button
           onClick={() => setSubTab('trial')}
           className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-            subTab === 'trial' ? 'bg-[#0B1F3A] text-[#F28C28] shadow-xs' : 'text-slate-600 dark:text-slate-400'
+            subTab === 'trial' ? 'bg-brand-navy text-brand-gold shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-700/60'
           }`}
         >
           {isAr ? 'ميزان المراجعة' : 'Trial Balance'}
@@ -253,7 +255,7 @@ export const AccountingView: React.FC = () => {
         <button
           onClick={() => setSubTab('pl')}
           className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-            subTab === 'pl' ? 'bg-[#0B1F3A] text-[#F28C28] shadow-xs' : 'text-slate-600 dark:text-slate-400'
+            subTab === 'pl' ? 'bg-brand-navy text-brand-gold shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-700/60'
           }`}
         >
           {isAr ? 'قائمة الدخل (P&L)' : 'Profit & Loss'}
@@ -262,7 +264,7 @@ export const AccountingView: React.FC = () => {
         <button
           onClick={() => setSubTab('balanceSheet')}
           className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-            subTab === 'balanceSheet' ? 'bg-[#0B1F3A] text-[#F28C28] shadow-xs' : 'text-slate-600 dark:text-slate-400'
+            subTab === 'balanceSheet' ? 'bg-brand-navy text-brand-gold shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-700/60'
           }`}
         >
           {isAr ? 'الميزانية العمومية' : 'Balance Sheet'}
@@ -276,7 +278,7 @@ export const AccountingView: React.FC = () => {
 
       {/* SUBTAB 1: Journal Entries Ledger */}
       {subTab === 'journals' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="report-card rounded-xl p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <span>{isAr ? 'سجل قيود اليومية المعتمدة' : 'General Ledger Journal Entries'}</span>
@@ -335,7 +337,7 @@ export const AccountingView: React.FC = () => {
                 </div>
 
                 {/* Lines Table */}
-                <table className="w-full text-left rtl:text-right text-xs">
+                <table className="report-table w-full text-left rtl:text-right text-xs">
                   <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-400 font-semibold border-b border-slate-100 dark:border-slate-800">
                     <tr>
                       <th className="px-4 py-2">{isAr ? 'رمز الحساب' : 'Account Code'}</th>
@@ -380,12 +382,12 @@ export const AccountingView: React.FC = () => {
 
       {/* SUBTAB 2: Posting Rules Engine */}
       {subTab === 'postingRules' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="report-card rounded-xl p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-indigo-600" />
-                <span>{isAr ? 'محرك قواعد الترحيل الآلي للمستندات (Posting Rules Engine)' : 'Configurable Posting Rules Engine'}</span>
+                <span>{isAr ? 'قواعد الترحيل الآلي للمستندات' : 'Configurable Posting Rules'}</span>
               </h3>
               <p className="text-xs text-slate-500">
                 {isAr ? 'تحدد قواعد الترحيل الحسابات التي تتأثر عند اعتماد المستندات التجارية دون تعديل برمجي' : 'Defines Debit, Credit, Tax, and Discount GL Account mappings for each Document Type'}
@@ -394,7 +396,7 @@ export const AccountingView: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left rtl:text-right text-xs">
+            <table className="report-table w-full text-left rtl:text-right text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 font-semibold border-b border-slate-200 dark:border-slate-800">
                 <tr>
                   <th className="px-4 py-3">{isAr ? 'نوع المستند' : 'Document Type'}</th>
@@ -438,12 +440,12 @@ export const AccountingView: React.FC = () => {
 
       {/* SUBTAB 3: Financial Events Log */}
       {subTab === 'financialEvents' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="report-card rounded-xl p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-600" />
-                <span>{isAr ? 'تدفق الفعاليات المالية والتسجيل الآلي (Financial Event Stream)' : 'Event-Driven Financial Event Stream'}</span>
+                <span>{isAr ? 'الحركات المالية' : 'Financial activity'}</span>
               </h3>
               <p className="text-xs text-slate-500">
                 {isAr ? 'سجل تتبع لحظي لجميع الأحداث المالية الواردة من المبيعات، المشتريات، والمخزون' : 'Real-time financial event publisher stream mapping business transactions to GL Entries'}
@@ -454,7 +456,7 @@ export const AccountingView: React.FC = () => {
 
           <div className="space-y-3">
             {financialEvents.map((fe) => (
-              <div key={fe.id} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-xs space-y-2">
+              <div key={fe.id} className="p-3 rounded-lg border border-slate-200/80 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 text-xs space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-mono">
                     <span className="font-bold text-emerald-600">{fe.eventType}</span>
@@ -483,7 +485,7 @@ export const AccountingView: React.FC = () => {
 
       {/* SUBTAB 4: Chart of Accounts */}
       {subTab === 'coa' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="report-card rounded-xl p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-sm">
@@ -504,7 +506,7 @@ export const AccountingView: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left rtl:text-right text-xs">
+            <table className="report-table w-full text-left rtl:text-right text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase font-semibold border-b border-slate-200 dark:border-slate-800">
                 <tr>
                   <th className="px-4 py-3">{isAr ? 'رمز الحساب' : 'Code'}</th>
@@ -544,13 +546,13 @@ export const AccountingView: React.FC = () => {
 
       {/* SUBTAB 5: Trial Balance */}
       {subTab === 'trial' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="report-card rounded-xl p-5 shadow-sm space-y-4">
           <h3 className="font-bold text-slate-900 dark:text-white text-sm">
             {isAr ? 'ميزان المراجعة بالأرصدة والمدين/الدائن' : 'Trial Balance Report'}
           </h3>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left rtl:text-right text-xs">
+            <table className="report-table w-full text-left rtl:text-right text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 uppercase font-semibold border-b border-slate-200 dark:border-slate-800">
                 <tr>
                   <th className="px-4 py-3">{isAr ? 'رمز الحساب' : 'Code'}</th>
@@ -583,7 +585,7 @@ export const AccountingView: React.FC = () => {
 
       {/* SUBTAB 6: P&L Statement */}
       {subTab === 'pl' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs max-w-3xl mx-auto space-y-6">
+        <div className="report-card rounded-xl p-6 shadow-sm max-w-3xl mx-auto space-y-6">
           <div className="border-b border-slate-200 dark:border-slate-800 pb-4 text-center">
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               {isAr ? 'قائمة الدخل - الأرباح والخسائر' : 'Income Statement (Profit & Loss)'}
@@ -627,7 +629,7 @@ export const AccountingView: React.FC = () => {
             </div>
 
             {/* Net Profit Summary */}
-            <div className="p-4 rounded-xl bg-[#0B1F3A] border border-[#153258] text-white flex justify-between items-center text-sm font-bold shadow-xs">
+            <div className="p-4 rounded-xl bg-brand-navy border border-brand-navy-light text-white flex justify-between items-center text-sm font-bold shadow-sm">
               <span>{isAr ? 'صافي الربح قبل الضريبة:' : 'Net Operating Income:'}</span>
               <span className="font-mono text-emerald-400 text-lg">{netIncome.toLocaleString()} SAR</span>
             </div>
@@ -637,7 +639,7 @@ export const AccountingView: React.FC = () => {
 
       {/* SUBTAB 7: Balance Sheet */}
       {subTab === 'balanceSheet' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs max-w-4xl mx-auto space-y-6">
+        <div className="report-card rounded-xl p-6 shadow-sm max-w-4xl mx-auto space-y-6">
           <div className="border-b border-slate-200 dark:border-slate-800 pb-4 text-center">
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               {isAr ? 'الميزانية العمومية المركزية' : 'Statement of Financial Position (Balance Sheet)'}
@@ -686,7 +688,7 @@ export const AccountingView: React.FC = () => {
       {/* CREATE MANUAL ADJUSTING JOURNAL ENTRY MODAL */}
       {isCreateJeOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="report-card w-full max-w-2xl rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
@@ -715,7 +717,7 @@ export const AccountingView: React.FC = () => {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="e.g. Year-End Depreciation Adjustment or Auditor Reclassification"
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2"
+                  className="w-full am-control bg-slate-50 dark:bg-slate-800 px-3 py-2"
                 />
               </div>
 
@@ -728,7 +730,7 @@ export const AccountingView: React.FC = () => {
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
                   placeholder="AUDIT-2026-ADJ"
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
+                  className="w-full am-control bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
                 />
               </div>
 
@@ -791,7 +793,7 @@ export const AccountingView: React.FC = () => {
                 </button>
                 <button
                   onClick={handleSubmitJe}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shadow-xs"
+                  className="btn-am-primary px-4 py-2 rounded-lg text-xs cursor-pointer shadow-sm"
                 >
                   {isAr ? 'ترحيل القيد الاستثنائي' : 'Post Adjustment'}
                 </button>
@@ -805,7 +807,7 @@ export const AccountingView: React.FC = () => {
       {/* CREATE ACCOUNT MODAL */}
       {isCreateAccountOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4">
+          <div className="report-card w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-base">
               {isAr ? 'إضافة حساب جديد بالدليل' : 'Add New Account to COA'}
             </h3>
@@ -818,7 +820,7 @@ export const AccountingView: React.FC = () => {
                   placeholder="e.g. 5040"
                   value={newAccCode}
                   onChange={(e) => setNewAccCode(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
+                  className="w-full am-control bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
                 />
               </div>
 
@@ -829,7 +831,7 @@ export const AccountingView: React.FC = () => {
                   placeholder="e.g. Legal & Professional Fees"
                   value={newAccName}
                   onChange={(e) => setNewAccName(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2"
+                  className="w-full am-control bg-slate-50 dark:bg-slate-800 px-3 py-2"
                 />
               </div>
 
@@ -840,7 +842,7 @@ export const AccountingView: React.FC = () => {
                   placeholder="أتعاب استشارية وقانونية"
                   value={newAccNameAr}
                   onChange={(e) => setNewAccNameAr(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2"
+                  className="w-full am-control bg-slate-50 dark:bg-slate-800 px-3 py-2"
                 />
               </div>
 
@@ -849,7 +851,7 @@ export const AccountingView: React.FC = () => {
                 <select
                   value={newAccCategory}
                   onChange={(e) => setNewAccCategory(e.target.value as any)}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2"
+                  className="w-full am-control bg-slate-50 dark:bg-slate-800 px-3 py-2"
                 >
                   <option value="Asset">Asset</option>
                   <option value="Liability">Liability</option>
@@ -869,7 +871,7 @@ export const AccountingView: React.FC = () => {
               </button>
               <button
                 onClick={handleCreateAccount}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shadow-xs"
+                className="btn-am-primary px-4 py-2 rounded-lg text-xs cursor-pointer shadow-sm"
               >
                 Save Account
               </button>

@@ -248,7 +248,7 @@ export const ExecutiveDashboard: React.FC = () => {
   // Dynamic Stock Category Distribution derived from actual items
   const stockCategoryData = useMemo(() => {
     const categoryTotals: Record<string, number> = {};
-    const palette = ['#0B1F3A', '#C9A227', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F97316'];
+    const palette = ['#0B1D36', '#CAAF7D', '#10B981', '#3B82F6', '#64748B', '#8B5CF6', '#94A3B8'];
 
     inventory.forEach(item => {
       const cat = item.category || item.categoryName || (isAr ? 'عام' : 'General');
@@ -281,568 +281,126 @@ export const ExecutiveDashboard: React.FC = () => {
   if (isLoading) {
     return (
       <div className="p-6 space-y-6 animate-pulse">
-        <div className="h-28 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
+        <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded-xl" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(n => (
-            <div key={n} className="h-32 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
-          ))}
+          {[1, 2, 3, 4].map(n => <div key={n} className="h-28 bg-slate-200 dark:bg-slate-800 rounded-xl" />)}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-72 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
-          <div className="h-72 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
-        </div>
+        <div className="h-72 bg-slate-200 dark:bg-slate-800 rounded-xl" />
       </div>
     );
   }
 
+  const unpaidInvoices = invoices.filter(inv => inv.status !== 'PAID' && inv.paymentStatus !== 'PAID');
+  const unpaidBills = purchaseInvoices.filter(pi => pi.status !== 'PAID' && pi.paymentStatus !== 'PAID');
+
   return (
     <div className="p-6 space-y-6">
-      
-      {/* Top Banner & Corporate Greeting */}
-      <div 
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-white p-6 rounded-2xl border shadow-md transition-all"
-        style={{ 
-          backgroundColor: branding?.primaryColor || '#0B1F3A',
-          borderColor: '#153258'
-        }}
-      >
-        <div className="space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2 mb-1">
-            <div 
-              className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs shadow-xs border"
-              style={{ 
-                backgroundColor: branding?.primaryColor || '#0B1F3A',
-                borderColor: branding?.accentColor || '#C9A227',
-                color: branding?.accentColor || '#C9A227'
-              }}
-            >
-              AM
-            </div>
-            <span className="text-xs font-mono font-bold tracking-wider uppercase text-slate-300">
-              {activeCompany?.name || 'Enterprise Master'} ({currency})
-            </span>
-            <span 
-              className="text-[10px] px-2 py-0.5 rounded-full font-bold border"
-              style={{ 
-                backgroundColor: `${branding?.accentColor || '#C9A227'}26`,
-                color: branding?.accentColor || '#C9A227',
-                borderColor: `${branding?.accentColor || '#C9A227'}4D`
-              }}
-            >
-              {isAr ? 'بيانات مالية حقيقية 100%' : 'Real Live ERP Telemetry'}
-            </span>
-          </div>
-
-          <h2 className="text-xl font-bold tracking-tight">
-            {isAr ? 'لوحة المؤشرات والرقابة المالية التنفيذية' : 'Executive Operations & Financial Performance'}
-          </h2>
-          <p className="text-xs text-slate-300 max-w-xl">
-            {isAr 
-              ? 'مؤشرات تشغيلية حقيقية مستخرجة مباشرة من الأستاذ العام، المخزون، وسجلات المبيعات والمشتريات.'
-              : 'Real-time corporate metrics derived directly from General Ledger, Inventory Ledger, and Invoicing.'}
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            {activeCompany?.name || (isAr ? 'الشركة الحالية' : 'Current company')} · {currency}
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            {isAr ? 'لوحة التحكم' : 'Business overview'}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {isAr ? 'ملخص مالي وتشغيلي من سجلات النظام الحالية.' : 'A concise view of current financial and operational records.'}
           </p>
         </div>
-
-        {/* Quick Operational Actions */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <button
-            onClick={() => setActiveModule('sales')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-950 transition-all shadow-sm cursor-pointer hover:opacity-95"
-            style={{ backgroundColor: branding?.accentColor || '#C9A227' }}
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>{isAr ? 'فاتورة بيع' : 'New Invoice'}</span>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setActiveModule('sales')} className="px-3 py-2 rounded-lg text-xs font-semibold text-white transition hover:opacity-90" style={{ backgroundColor: branding?.primaryColor || '#0B1F3A' }}>
+            {isAr ? 'فاتورة بيع جديدة' : 'New sales invoice'}
           </button>
-          
-          <button
-            onClick={() => setActiveModule('purchasing')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white transition-all border border-white/20 cursor-pointer"
-          >
-            <Truck className="w-4 h-4" />
-            <span>{isAr ? 'أمر شراء' : 'New PO'}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveModule('accounting')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white transition-all border border-white/20 cursor-pointer"
-          >
-            <FileText className="w-4 h-4" />
-            <span>{isAr ? 'قيد محاسبي' : 'Journal'}</span>
-          </button>
-
-          <button
-            onClick={() => triggerReload()}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/15 text-white transition-all border border-white/20 cursor-pointer"
-            title={isAr ? 'تحديث البيانات' : 'Refresh Telemetry'}
-          >
+          <button onClick={() => triggerReload()} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800" title={isAr ? 'تحديث البيانات' : 'Refresh data'}>
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>
-      </div>
+      </header>
 
       {loadError && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>{loadError}</span>
-          </div>
-          <button 
-            onClick={() => triggerReload()} 
-            className="font-bold underline hover:no-underline"
-          >
-            {isAr ? 'إعادة المحاولة' : 'Retry'}
-          </button>
+        <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between">
+          <span className="flex items-center gap-2"><AlertCircle className="w-4 h-4" />{loadError}</span>
+          <button onClick={() => triggerReload()} className="font-bold underline">{isAr ? 'إعادة المحاولة' : 'Retry'}</button>
         </div>
       )}
 
-      {/* Row 1: Primary Commercial KPIs (Sales, Receivables, Payables, Inventory) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Net Sales */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              {isAr ? 'صافي المبيعات المحققة' : 'Net Realized Sales'}
-            </span>
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
-              <TrendingUp className="w-4 h-4" />
+      <section aria-label={isAr ? 'المؤشرات الرئيسية' : 'Primary metrics'} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: isAr ? 'صافي المبيعات' : 'Net sales', value: metrics.netSales, icon: TrendingUp, tone: 'emerald' },
+          { label: isAr ? 'الذمم المدينة' : 'Accounts receivable', value: metrics.totalReceivables, icon: DollarSign, tone: 'blue' },
+          { label: isAr ? 'الذمم الدائنة' : 'Accounts payable', value: metrics.totalPayables, icon: Truck, tone: 'amber' },
+          { label: isAr ? 'النقدية والبنوك' : 'Cash and bank', value: metrics.cashBalance + metrics.bankBalance, icon: Wallet, tone: 'slate' }
+        ].map(({ label, value, icon: Icon, tone }) => (
+          <div key={label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <span>{label}</span>
+              <Icon className={`w-4 h-4 ${
+                tone === 'emerald'
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : tone === 'blue'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : tone === 'amber'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-slate-500 dark:text-slate-400'
+              }`} />
             </div>
+            <div className="mt-3 text-2xl font-mono font-bold text-slate-900 dark:text-white">{value.toLocaleString()} <span className="text-xs font-sans font-normal text-slate-400">{currency}</span></div>
           </div>
-          <div className="mt-3">
-            <div className="text-2xl font-mono font-bold text-slate-900 dark:text-white">
-              {metrics.netSales.toLocaleString()} <span className="text-xs text-slate-400 font-sans">{currency}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-              <span>{isAr ? 'إجمالي المبيعات:' : 'Gross:'} {metrics.grossSales.toLocaleString()}</span>
-              {metrics.salesReturns > 0 && (
-                <span className="text-rose-500 font-bold">
-                  -{metrics.salesReturns.toLocaleString()} {isAr ? 'مرتجعات' : 'ret'}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        ))}
+      </section>
 
-        {/* Receivables & Unpaid Invoices */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              {isAr ? 'ذمم العملاء المدينة (مستحقات)' : 'Accounts Receivable'}
-            </span>
-            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
-              <DollarSign className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl font-mono font-bold text-slate-900 dark:text-white">
-              {metrics.totalReceivables.toLocaleString()} <span className="text-xs text-slate-400 font-sans">{currency}</span>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 mt-1">
-              <span>{metrics.unpaidInvoicesCount} {isAr ? 'فواتير عملاء غير مسددة بالكامل' : 'unpaid customer invoices'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Payables & Vendor Bills */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              {isAr ? 'ذمم الموردين الدائنة (التزامات)' : 'Accounts Payable'}
-            </span>
-            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
-              <Truck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl font-mono font-bold text-slate-900 dark:text-white">
-              {metrics.totalPayables.toLocaleString()} <span className="text-xs text-slate-400 font-sans">{currency}</span>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 mt-1">
-              <span>{isAr ? 'إجمالي المشتريات:' : 'Purchases:'} {metrics.totalPurchases.toLocaleString()} {currency}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Inventory Valuation */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              {isAr ? 'تقييم المخزون المتاح' : 'Inventory Valuation'}
-            </span>
-            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
-              <PackageCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl font-mono font-bold text-slate-900 dark:text-white">
-              {metrics.totalInventoryValuation.toLocaleString()} <span className="text-xs text-slate-400 font-sans">{currency}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-1">
-              <span>{inventory.length} {isAr ? 'أصناف مسجلة' : 'active SKUs'}</span>
-              {metrics.lowStockCount > 0 && (
-                <span className="text-amber-600 dark:text-amber-400 font-bold">
-                  {metrics.lowStockCount} {isAr ? 'نواقص' : 'low stock'}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Row 2: Secondary Treasury & Operational Integrity KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Cash Balance */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>{isAr ? 'أرصدة الصناديق والخزينة' : 'Cash on Hand'}</span>
-            <Wallet className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="mt-2 text-xl font-mono font-bold text-slate-900 dark:text-white">
-            {metrics.cashBalance.toLocaleString()} <span className="text-xs text-slate-400 font-sans">{currency}</span>
-          </div>
-        </div>
-
-        {/* Bank Balance */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>{isAr ? 'أرصدة الحسابات البنكية' : 'Bank Accounts Balance'}</span>
-            <Landmark className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="mt-2 text-xl font-mono font-bold text-slate-900 dark:text-white">
-            {metrics.bankBalance.toLocaleString()} <span className="text-xs text-slate-400 font-sans">{currency}</span>
-          </div>
-        </div>
-
-        {/* Pending Approvals */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>{isAr ? 'طلبات موافقة معلقة' : 'Pending Approvals'}</span>
-            <Clock className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="mt-2 text-xl font-mono font-bold text-slate-900 dark:text-white flex items-center justify-between">
-            <span>{pendingApprovals.length} <span className="text-xs text-slate-400 font-sans">{isAr ? 'طلب' : 'items'}</span></span>
-            {pendingApprovals.length > 0 && (
-              <button 
-                onClick={() => setActiveModule('workflows')}
-                className="text-xs text-amber-600 dark:text-amber-400 font-bold hover:underline"
-              >
-                {isAr ? 'مراجعة' : 'Review'}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* AI & Audit Integrity Scan */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>{isAr ? 'تنبيهات سلامة القيود والتدقيق' : 'Integrity & Audit Anomalies'}</span>
-            <ShieldAlert className="w-4 h-4 text-rose-500" />
-          </div>
-          <div className="mt-2 text-xl font-mono font-bold text-slate-900 dark:text-white">
-            <span className={anomalies.length > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}>
-              {anomalies.length}
-            </span>
-            <span className="text-xs text-slate-400 font-sans ml-1">
-              {anomalies.length === 0 ? (isAr ? 'لا توجد مخالفات' : 'Zero flags') : (isAr ? 'حالات تتطلب فحص' : 'require review')}
-            </span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Manufacturing WIP & Cost KPIs (Displayed only when manufacturing is active) */}
-      {isManufacturingActive && (
-        <div className="p-4 rounded-2xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-xs">
-              <Factory className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
-                {isAr ? 'مؤشرات التصنيع والإنتاج (Garment / Apparel)' : 'Manufacturing Operations Telemetry'}
-              </div>
-              <div className="text-sm font-bold text-slate-900 dark:text-white">
-                {isAr ? 'تكاليف الإنتاج والإنتاج تحت التشغيل (WIP)' : 'Active Work in Progress & Production Cost'}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6 text-xs">
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 block">{isAr ? 'الإنتاج تحت التشغيل:' : 'WIP Value:'}</span>
-              <span className="font-mono font-bold text-slate-900 dark:text-white text-base">
-                {(metrics.totalInventoryValuation * 0.25).toLocaleString()} {currency}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 block">{isAr ? 'أوامر تصنيع نشطة:' : 'Active Orders:'}</span>
-              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-base">
-                12 {isAr ? 'أمر عمل' : 'WOs'}
-              </span>
-            </div>
-            <button
-              onClick={() => setActiveModule('manufacturing')}
-              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition cursor-pointer"
-            >
-              {isAr ? 'فتح التصنيع' : 'Manage WIP'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Row 3: Visual Analytics (Dynamic Real-Time Charts) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Revenue vs Expenses Chart (from real data) */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                {isAr ? 'أداء الإيرادات والمصروفات المحققة' : 'Realized Revenue vs Expense Inflow'}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {isAr 
-                  ? 'مستخرج آلياً من فواتير المبيعات وفواتير التوريد المقيدة'
-                  : 'Computed live from posted sales invoices and supplier procurement bills'}
-              </p>
-            </div>
-            <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              {currency}
-            </span>
-          </div>
-
-          <div className="h-64">
-            {monthlyChartData.length === 0 || (monthlyChartData.every(d => d.revenue === 0 && d.expenses === 0)) ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-                <Receipt className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
-                <p className="text-xs font-semibold">
-                  {isAr ? 'لا توجد فواتير مبيعات أو مشتريات مرحلة في هذه الفترة حتى الآن' : 'No posted sales or purchase invoices for current period'}
-                </p>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  {isAr ? 'ستظهر الرسوم البيانية آلياً بمجرد إصدار أول فاتورة' : 'Visual charts will populate automatically upon first posted transaction'}
-                </p>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip 
-                    formatter={(val: any) => [`${Number(val).toLocaleString()} ${currency}`, '']}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    name={isAr ? 'الإيرادات' : 'Revenue'} 
-                    stroke="#10b981" 
-                    fillOpacity={1} 
-                    fill="url(#colorRev)" 
-                    strokeWidth={2} 
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="expenses" 
-                    name={isAr ? 'المصروفات' : 'Expenses'} 
-                    stroke="#6366f1" 
-                    fillOpacity={1} 
-                    fill="url(#colorExp)" 
-                    strokeWidth={2} 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        {/* Real Inventory Breakdown by Category */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs flex flex-col justify-between">
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-xl">
+        <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-1">
-              {isAr ? 'توزيع قيمة المخزون حسب الفئة' : 'Stock Valuation by Category'}
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              {isAr ? 'مستخرج من أرصدة الأصناف المسجلة فعلياً' : 'Aggregated from active stock items in database'}
-            </p>
-
-            <div className="h-44 flex items-center justify-center">
-              {stockCategoryData.length === 0 ? (
-                <div className="text-center text-xs text-slate-400">
-                  <PackageCheck className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-1" />
-                  <span>{isAr ? 'لا توجد أصناف مخزنية مسجلة' : 'No inventory items recorded'}</span>
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={stockCategoryData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={70}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {stockCategoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(val: any) => [`${Number(val).toLocaleString()} ${currency}`, '']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
+            <h2 className="font-bold text-slate-900 dark:text-white text-sm">{isAr ? 'الإيرادات والمصروفات' : 'Revenue and expenses'}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{isAr ? 'الاتجاه الشهري من فواتير المبيعات والمشتريات.' : 'Monthly trend from sales and purchase invoices.'}</p>
+          </div>
+          <span className="text-xs font-mono px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300">{currency}</span>
+        </div>
+        <div className="h-64">
+          {monthlyChartData.every(d => d.revenue === 0 && d.expenses === 0) ? (
+            <div className="h-full flex items-center justify-center text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
+              {isAr ? 'لا توجد معاملات مالية للفترة الحالية.' : 'No financial transactions for the current period.'}
             </div>
-          </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <defs><linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.35}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient><linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#64748b" stopOpacity={0.25}/><stop offset="95%" stopColor="#64748b" stopOpacity={0}/></linearGradient></defs>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.1} /><XAxis dataKey="month" tick={{ fontSize: 11 }} /><YAxis tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(val: any) => [`${Number(val).toLocaleString()} ${currency}`, '']} />
+                <Area type="monotone" dataKey="revenue" name={isAr ? 'الإيرادات' : 'Revenue'} stroke="#10b981" fill="url(#colorRev)" strokeWidth={2} />
+                <Area type="monotone" dataKey="expenses" name={isAr ? 'المصروفات' : 'Expenses'} stroke="#64748b" fill="url(#colorExp)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </section>
 
-          <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3 text-xs">
-            {stockCategoryData.slice(0, 4).map((item) => (
-              <div key={item.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-2 truncate">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                  <span className="text-slate-600 dark:text-slate-300 font-medium truncate">{item.name}</span>
-                </div>
-                <span className="font-mono font-bold text-slate-900 dark:text-white shrink-0">
-                  {item.value.toLocaleString()} {currency}
-                </span>
-              </div>
-            ))}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-xl">
+          <div className="flex items-center justify-between mb-3"><h2 className="font-bold text-slate-900 dark:text-white text-sm">{isAr ? 'الذمم المدينة' : 'Receivables'}</h2><span className="text-xs text-slate-500">{unpaidInvoices.length} {isAr ? 'فاتورة' : 'invoices'}</span></div>
+          <div className="space-y-2">
+            {unpaidInvoices.slice(0, 4).map(inv => <div key={inv.id} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0 text-xs"><span className="text-slate-600 dark:text-slate-300 truncate">{inv.invoiceNumber || inv.number || inv.id}</span><span className="font-mono font-semibold text-slate-900 dark:text-white">{Number(inv.remainingAmount ?? inv.grandTotal ?? inv.totalAmount ?? 0).toLocaleString()} {currency}</span></div>)}
+            {unpaidInvoices.length === 0 && <p className="py-5 text-center text-xs text-slate-400">{isAr ? 'لا توجد ذمم مستحقة.' : 'No outstanding receivables.'}</p>}
           </div>
         </div>
-
-      </div>
-
-      {/* Row 4: Pending Approvals & Real Posted Journals */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Pending Approvals Queue */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-              <Clock className="w-4 h-4 text-amber-500" />
-              <span>{isAr ? 'قائمة انتظار الموافقات المعتمدة' : 'Approval Workflows Pipeline'}</span>
-            </h3>
-            <button
-              onClick={() => setActiveModule('workflows')}
-              className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
-            >
-              {isAr ? 'عرض الكل' : 'View All'}
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {pendingApprovals.length === 0 ? (
-              <div className="text-center py-8 text-xs text-slate-400 border border-dashed border-slate-100 dark:border-slate-800 rounded-xl">
-                <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
-                <span>{isAr ? 'لا توجد طلبات موافقة معلقة حالياً' : 'All approvals are up to date'}</span>
-              </div>
-            ) : (
-              pendingApprovals.slice(0, 3).map((app) => (
-                <div
-                  key={app.id}
-                  className="p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 flex items-center justify-between"
-                >
-                  <div>
-                    <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>{app.entityNumber || app.id}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-300 font-bold">
-                        {app.currentApproverRole || 'Approver'}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                      {app.description || (isAr ? 'طلب اعتماد مستند' : 'Document authorization request')}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={async () => {
-                      try {
-                        await ApiClient.handleApprovalAction(app.id, 'APPROVE', 'Approved from Executive Dashboard');
-                        triggerReload();
-                      } catch (e) {
-                        console.error('Approval failed:', e);
-                      }
-                    }}
-                    className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition shadow-xs cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{isAr ? 'اعتماد' : 'Approve'}</span>
-                  </button>
-                </div>
-              ))
-            )}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-xl">
+          <div className="flex items-center justify-between mb-3"><h2 className="font-bold text-slate-900 dark:text-white text-sm">{isAr ? 'الذمم الدائنة' : 'Payables'}</h2><span className="text-xs text-slate-500">{unpaidBills.length} {isAr ? 'فاتورة' : 'bills'}</span></div>
+          <div className="space-y-2">
+            {unpaidBills.slice(0, 4).map(pi => <div key={pi.id} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0 text-xs"><span className="text-slate-600 dark:text-slate-300 truncate">{pi.invoiceNumber || pi.billNumber || pi.number || pi.id}</span><span className="font-mono font-semibold text-slate-900 dark:text-white">{Number(pi.remainingAmount ?? pi.totalAmount ?? pi.grandTotal ?? pi.amount ?? 0).toLocaleString()} {currency}</span></div>)}
+            {unpaidBills.length === 0 && <p className="py-5 text-center text-xs text-slate-400">{isAr ? 'لا توجد التزامات مستحقة.' : 'No outstanding payables.'}</p>}
           </div>
         </div>
+      </section>
 
-        {/* Recent Real Posted Journals */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-              <FileText className="w-4 h-4 text-indigo-500" />
-              <span>{isAr ? 'آخر القيود المحاسبية المرحّلة' : 'Recent Posted Journal Entries'}</span>
-            </h3>
-            <button
-              onClick={() => setActiveModule('accounting')}
-              className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
-            >
-              {isAr ? 'فتح الأستاذ العام' : 'General Ledger'}
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {journals.length === 0 ? (
-              <div className="text-center py-8 text-xs text-slate-400 border border-dashed border-slate-100 dark:border-slate-800 rounded-xl">
-                <span>{isAr ? 'لا توجد قيود مسجلة في الأستاذ العام بعد' : 'No journal entries posted yet'}</span>
-              </div>
-            ) : (
-              journals.slice(0, 3).map((je) => (
-                <div
-                  key={je.id}
-                  className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex items-center justify-between"
-                >
-                  <div>
-                    <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>{je.entryNumber || je.id}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${
-                        je.status === 'Posted' 
-                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' 
-                          : 'bg-amber-100 dark:bg-amber-950 text-amber-700'
-                      }`}>
-                        {je.status || 'Draft'}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-xs">
-                      {je.description || (isAr ? 'قيد محاسبي مزدوج' : 'Double-entry journal')}
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                      {Number(je.totalDebit || 0).toLocaleString()} {currency}
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      {je.date || je.createdAt || ''}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-xl">
+        <div className="flex items-center justify-between mb-3"><h2 className="font-bold text-slate-900 dark:text-white text-sm">{isAr ? 'النشاط الأخير' : 'Recent activity'}</h2><button onClick={() => setActiveModule('accounting')} className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">{isAr ? 'الأستاذ العام' : 'General ledger'}</button></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+          {journals.slice(0, 4).map(je => <div key={je.id} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 text-xs"><span className="truncate text-slate-600 dark:text-slate-300">{je.entryNumber || je.id} · {je.description || (isAr ? 'قيد محاسبي' : 'Journal entry')}</span><span className="font-mono font-semibold text-slate-900 dark:text-white">{Number(je.totalDebit || 0).toLocaleString()} {currency}</span></div>)}
+          {pendingApprovals.slice(0, 2).map(app => <div key={app.id} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 text-xs"><span className="flex items-center gap-2 truncate text-slate-600 dark:text-slate-300"><Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />{app.entityNumber || app.id} · {isAr ? 'موافقة معلقة' : 'Approval pending'}</span><button onClick={() => setActiveModule('workflows')} className="text-amber-600 dark:text-amber-400 font-semibold hover:underline">{isAr ? 'مراجعة' : 'Review'}</button></div>)}
+          {journals.length === 0 && pendingApprovals.length === 0 && <p className="col-span-full py-5 text-center text-xs text-slate-400">{isAr ? 'لا يوجد نشاط حديث.' : 'No recent activity.'}</p>}
         </div>
-
-      </div>
-
+      </section>
     </div>
   );
 };

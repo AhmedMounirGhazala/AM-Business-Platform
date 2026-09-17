@@ -205,7 +205,7 @@ export function makeDurableArray<T extends Record<string, any>>(
 /**
  * Initializes a durable collection:
  * - If SQLite already has data, loads from SQLite
- * - If SQLite is empty, seeds with initialSeed
+ * - If SQLite is empty, seeds only when explicitly enabled for local development
  * - Wraps with durable write-through proxy
  */
 export function initDurableCollection<T extends Record<string, any>>(
@@ -214,16 +214,18 @@ export function initDurableCollection<T extends Record<string, any>>(
   pilotDb: PilotDatabaseService
 ): T[] {
   let list: T[];
+  const allowSeedData = process.env.NODE_ENV !== 'production' &&
+    process.env.ALLOW_DEMO_SEED_DATA === 'true';
   try {
     if (pilotDb.isCollectionInitialized(collection)) {
       list = pilotDb.loadCollection<T>(collection);
     } else {
-      pilotDb.saveCollection(collection, initialSeed);
-      list = [...initialSeed];
+      list = allowSeedData ? [...initialSeed] : [];
+      pilotDb.saveCollection(collection, list);
     }
   } catch (err) {
-    console.error(`[DurablePersistence] Failed initializing collection ${collection}, using seed:`, err);
-    list = [...initialSeed];
+    console.error(`[DurablePersistence] Failed initializing collection ${collection}:`, err);
+    list = [];
   }
 
   return makeDurableArray(collection, list, pilotDb);

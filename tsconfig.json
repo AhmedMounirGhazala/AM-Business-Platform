@@ -22,5 +22,16 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "data",
+    "1234",
+    "coverage",
+    "test-results",
+    "**/*.db",
+    "**/*.db-shm",
+    "**/*.db-wal"
+  ]
 }

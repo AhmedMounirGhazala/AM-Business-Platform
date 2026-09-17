@@ -71,23 +71,23 @@ export const GlobalSearchModal: React.FC = () => {
   if (!isSearchOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-slate-900/60 backdrop-blur-xs p-4 animate-fadeIn">
-      <div className="w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-slate-950/55 backdrop-blur-xs p-4 animate-fadeIn">
+      <div className="w-full max-w-2xl rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
         
         {/* Input Header */}
         <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 px-4 py-3">
-          <Search className="w-5 h-5 text-[#F28C28]" />
+          <Search className="w-5 h-5 text-brand-orange shrink-0" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={isAr ? 'ابحث برقم القيد، الحساب، الفاتورة، أو اسم المادة...' : 'Type to search journal number, invoice, item SKU, customer...'}
-            className="w-full bg-transparent text-sm text-slate-900 dark:text-white focus:outline-hidden placeholder:text-slate-400"
+            className="w-full bg-transparent text-sm text-slate-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40 rounded-md px-1 py-1 placeholder:text-slate-400"
             autoFocus
           />
           <button
             onClick={() => setIsSearchOpen(false)}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="am-focus-ring rounded-md p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <X className="w-5 h-5" />
           </button>
@@ -112,11 +112,13 @@ export const GlobalSearchModal: React.FC = () => {
                 {results.journals.map(j => (
                   <div
                     key={j.id}
+                    tabIndex={0}
+                    role="button"
                     onClick={() => {
                       setActiveModule('accounting');
                       setIsSearchOpen(false);
                     }}
-                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition"
+                    className="am-focus-ring flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition"
                   >
                     <div>
                       <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center gap-2">
@@ -149,11 +151,13 @@ export const GlobalSearchModal: React.FC = () => {
                 {results.invoices.map(inv => (
                   <div
                     key={inv.id}
+                    tabIndex={0}
+                    role="button"
                     onClick={() => {
                       setActiveModule('sales');
                       setIsSearchOpen(false);
                     }}
-                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition"
+                    className="am-focus-ring flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition"
                   >
                     <div>
                       <div className="font-semibold text-xs text-slate-900 dark:text-white">
@@ -183,11 +187,13 @@ export const GlobalSearchModal: React.FC = () => {
                 {results.items.map(item => (
                   <div
                     key={item.id}
+                    tabIndex={0}
+                    role="button"
                     onClick={() => {
                       setActiveModule('inventory');
                       setIsSearchOpen(false);
                     }}
-                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition"
+                    className="am-focus-ring flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition"
                   >
                     <div>
                       <div className="font-semibold text-xs text-slate-900 dark:text-white">
@@ -197,7 +203,7 @@ export const GlobalSearchModal: React.FC = () => {
                         {item.category}
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-end">
                       <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
                         {item.stockQty} {item.uom}
                       </div>

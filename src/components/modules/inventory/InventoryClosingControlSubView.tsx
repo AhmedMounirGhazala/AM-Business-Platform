@@ -1,12 +1,12 @@
 /**
- * AM Business Platform - Phase 2.2.5
+ * AM Business Platform - Inventory closing and control
  * Enterprise Inventory Closing & Inventory Control Center
  * 
  * SAP MM & Oracle SCM Compliant Inventory Control Architecture:
- * 1. Inventory Period Closing Engine (Open, Closing, Closed, Reopened)
+ * 1. Inventory Period Closing (Open, Closing, Closed, Reopened)
  * 2. Fiscal Inventory Lock (Company, Branch, Warehouse)
  * 3. Physical Inventory Cycle (Count Sessions, Count Sheets, Blind Count, Recount, Approval)
- * 4. Inventory Reconciliation Engine (Emits Business Events ONLY)
+ * 4. Inventory Reconciliation (Emits Business Events ONLY)
  * 5. Inventory Health Dashboard (Negative Stock, Dead Stock, Expiry, Utilization)
  * 6. Inventory Integrity Validation (7-Point Automated Verification Suite)
  * 7. Inventory Certification Report (Health Score %, Accuracy %, Completeness %)
@@ -254,7 +254,7 @@ export const InventoryClosingControlSubView: React.FC = () => {
     try {
       await ApiClient.postReconciliationProposal(proposalId, activeUser?.name || 'Ahmed Mounir');
       loadAllData();
-      alert(isAr ? 'تم إرسال حدث التسوية إلى طابور التكامل المالي بنجاح!' : 'Reconciliation event queued in Financial Integration Engine successfully!');
+      alert(isAr ? 'تم إرسال حدث التسوية إلى طابور التكامل المالي بنجاح!' : 'Reconciliation event queued for financial integration successfully!');
     } catch (err: any) {
       alert(err.message || 'Failed to post reconciliation proposal');
     }
@@ -269,7 +269,7 @@ export const InventoryClosingControlSubView: React.FC = () => {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <ShieldCheck className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-              <span>{isAr ? 'محرك الإغلاق والرقابة المخزنية - المرحلة 2.2.5' : 'Inventory Closing & Inventory Control Engine - Phase 2.2.5'}</span>
+              <span>{isAr ? 'إغلاق ورقابة المخزون' : 'Inventory Closing & Control'}</span>
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
               SAP MM & Oracle SCM Compliant
@@ -287,7 +287,7 @@ export const InventoryClosingControlSubView: React.FC = () => {
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-indigo-600' : ''}`} />
-            <span>{isAr ? 'تحديث البيانات' : 'Refresh Engine'}</span>
+            <span>{isAr ? 'تحديث البيانات' : 'Refresh Data'}</span>
           </button>
 
           <button
@@ -306,7 +306,7 @@ export const InventoryClosingControlSubView: React.FC = () => {
           { id: 'periods', labelAr: 'فترات الجرد الإغلاق', labelEn: 'Period Closing', icon: Calendar },
           { id: 'locks', labelAr: 'الأقفال المخزنية', labelEn: 'Fiscal Locks', icon: Lock },
           { id: 'counts', labelAr: 'الجرد الفعلي', labelEn: 'Physical Cycle Count', icon: ClipboardList },
-          { id: 'reconciliation', labelAr: 'مطابقة الفروقات', labelEn: 'Reconciliation Engine', icon: Zap },
+          { id: 'reconciliation', labelAr: 'مطابقة الفروقات', labelEn: 'Reconciliation', icon: Zap },
           { id: 'health', labelAr: 'مؤشرات سلامة المخزون', labelEn: 'Inventory Health', icon: BarChart3 },
           { id: 'integrity', labelAr: 'تشخيص النزاهة 7-Points', labelEn: 'Integrity Validation', icon: FileCheck },
           { id: 'certification', labelAr: 'شهادة جودة المخزون', labelEn: 'Certification Report', icon: Award },
@@ -605,7 +605,7 @@ export const InventoryClosingControlSubView: React.FC = () => {
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Zap className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              <span>{isAr ? 'محرك تسوية الفروقات المخزنية' : 'Inventory Reconciliation Engine'}</span>
+              <span>{isAr ? 'تسوية الفروقات المخزنية' : 'Inventory Reconciliation'}</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {isAr ? 'توليد توصيات العجز والزيادة وإرسال فعاليات الأعمال فقط إلى طابور التكامل المالي (دون إنشاء قيد مباشر)' : 'Generates Gain/Loss proposals and emits Business Events ONLY (EVT_ADJUSTMENT_PLUS, EVT_ADJUSTMENT_MINUS).'}
@@ -808,7 +808,7 @@ export const InventoryClosingControlSubView: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#153258] pb-5">
               <div>
                 <div className="flex items-center gap-2">
-                  <Award className="w-6 h-6 text-[#F28C28]" />
+                  <Award className="w-6 h-6 text-indigo-300" />
                   <h2 className="text-lg font-bold">{isAr ? 'تقرير توثيق واعتماد جاهزية المخزون' : 'Inventory Certification & Closing Readiness Report'}</h2>
                 </div>
                 <p className="text-xs text-slate-300 mt-1">

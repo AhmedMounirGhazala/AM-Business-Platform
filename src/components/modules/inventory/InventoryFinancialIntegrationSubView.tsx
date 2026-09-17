@@ -169,12 +169,12 @@ export const InventoryFinancialIntegrationSubView: React.FC<Props> = ({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-[#0B1F3A] text-white rounded-2xl p-6 shadow-sm border border-[#153258]">
+      <div className="bg-slate-900 dark:bg-slate-950 text-white rounded-xl p-5 shadow-lg shadow-slate-950/10 border border-slate-700/80">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="bg-[#153258] text-[#F28C28] text-xs font-semibold px-2.5 py-0.5 rounded-full border border-[#F28C28]/30">
-                Phase 2.2.4 Active
+              <span className="bg-indigo-500/15 text-indigo-200 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-indigo-400/30">
+                Integration queue
               </span>
               <span className="bg-emerald-500/20 text-emerald-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-emerald-400/30">
                 {isAr ? 'معيار الحسابات المزدوجة (IFRS Ready)' : 'Pure Event-Driven ERP'}
@@ -208,7 +208,7 @@ export const InventoryFinancialIntegrationSubView: React.FC<Props> = ({
           <span>
             {isAr
               ? 'ضمان المعيار المؤسسي: قسم المخزون تشغيلي خالص ولا يضيف أو ينشئ قيود محاسبية مباشرة في العامة بل يرسل أحداث أعمال (Business Events) فقط.'
-              : 'Strict Enterprise Isolation: Inventory domain is purely operational and NEVER posts directly to GL. It emits Business Events processed exclusively by the Financial Event Engine.'}
+              : 'Inventory remains operational and sends balanced events to the financial integration queue without posting directly to the ledger.'}
           </span>
         </div>
       </div>

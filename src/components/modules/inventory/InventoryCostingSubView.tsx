@@ -194,16 +194,16 @@ export const InventoryCostingSubView: React.FC<InventoryCostingSubViewProps> = (
       </div>
 
       {/* Interactive Cost Valuation Simulator Section */}
-      <div className="bg-slate-900/80 border border-amber-500/30 rounded-xl p-5 shadow-lg">
+      <div className="bg-slate-900/95 border border-slate-700 rounded-xl p-5 shadow-lg shadow-slate-950/20">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
           <div className="flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-amber-400" />
+            <Calculator className="w-5 h-5 text-indigo-300" />
             <h3 className="text-base font-bold text-white">
-              {isAr ? 'محاكي محرك تقييم التكلفة (Inventory Valuation Simulator)' : 'Inventory Valuation Engine Simulator'}
+              {isAr ? 'محاكاة تقييم التكلفة' : 'Inventory Valuation Simulator'}
             </h3>
           </div>
-          <span className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400 font-mono">
-            Phase 2.2.3 Enterprise Cost Engine
+          <span className="px-2.5 py-1 bg-indigo-500/10 border border-indigo-400/30 rounded text-xs text-indigo-200 font-semibold">
+            Costing workspace
           </span>
         </div>
 
@@ -274,10 +274,10 @@ export const InventoryCostingSubView: React.FC<InventoryCostingSubViewProps> = (
           <div className={simType === 'ISSUE' ? 'md:col-span-2' : 'md:col-span-2'}>
             <button
               onClick={handleRunSimulation}
-              className="w-full bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors shadow"
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
             >
               <RefreshCw className="w-4 h-4" />
-              {isAr ? 'تشغيل عملية التقييم الآلية' : 'Execute Cost Engine Valuation'}
+              {isAr ? 'تشغيل التقييم' : 'Run Valuation'}
             </button>
           </div>
         </div>
@@ -294,7 +294,7 @@ export const InventoryCostingSubView: React.FC<InventoryCostingSubViewProps> = (
             <div className="flex items-center justify-between font-bold text-sm border-b border-emerald-500/20 pb-1">
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                {isAr ? 'نتيجة احتساب محرك التكلفة' : 'Valuation Engine Calculation Result'}
+                {isAr ? 'نتيجة احتساب التكلفة' : 'Valuation Result'}
               </span>
               <span className="text-emerald-400">{simResult.methodUsed} Method</span>
             </div>

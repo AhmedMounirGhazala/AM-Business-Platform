@@ -34,9 +34,9 @@ import { BrandingSettingsView } from './components/modules/BrandingSettingsView'
 import { ComingSoonView } from './components/modules/ComingSoonView';
 
 const MainLayout: React.FC = () => {
-  const { 
-    activeModule, 
-    dir, 
+  const {
+    activeModule,
+    dir,
     lang,
     setIsSearchOpen,
     isPlatformInitializing,
@@ -62,16 +62,16 @@ const MainLayout: React.FC = () => {
   // First-Run / Onboarding Gate Initialization Screen (Zero-Flicker Gate)
   if (isPlatformInitializing) {
     return (
-      <div 
-        className="min-h-screen bg-[#071322] text-white flex flex-col items-center justify-center p-6 select-none" 
+      <div
+        className="min-h-screen bg-brand-navy-dark text-white flex flex-col items-center justify-center p-6 select-none"
         dir={dir}
         id="am-platform-initialization-gate"
       >
         <div className="max-w-md w-full text-center space-y-6">
           {/* AM Platform Monogram */}
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-[#0B1F3A] border border-[#153258] flex items-center justify-center shadow-2xl relative">
+          <div className="mx-auto w-16 h-16 rounded-lg bg-brand-navy border border-brand-navy-light flex items-center justify-center relative">
             <span className="text-2xl font-black tracking-tight text-white">AM</span>
-            <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#F28C28] ring-4 ring-[#071322]" />
+            <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-brand-orange ring-4 ring-[#061224]" />
           </div>
 
           <div className="space-y-2">
@@ -85,7 +85,7 @@ const MainLayout: React.FC = () => {
 
           {/* Clean Spinner and Status */}
           <div className="flex flex-col items-center gap-3 pt-2">
-            <RefreshCw className="w-6 h-6 animate-spin text-[#F28C28]" />
+            <RefreshCw className="w-6 h-6 animate-spin text-brand-orange" />
             <span className="text-xs text-slate-400 font-mono">
               {isAr ? 'التحقق من سجلات المنشأة في قاعدة البيانات...' : 'Querying SQLite onboarding status for active company...'}
             </span>
@@ -98,12 +98,12 @@ const MainLayout: React.FC = () => {
   // Initialization Failure / Backend Unreachable Screen
   if (platformInitError) {
     return (
-      <div 
-        className="min-h-screen bg-[#071322] text-white flex flex-col items-center justify-center p-6 select-none" 
+      <div
+        className="min-h-screen bg-brand-navy-dark text-white flex flex-col items-center justify-center p-6 select-none"
         dir={dir}
         id="am-platform-gate-error"
       >
-        <div className="max-w-md w-full bg-[#0B1F3A] border border-red-900/50 rounded-2xl p-6 shadow-2xl space-y-5 text-center">
+        <div className="max-w-md w-full bg-brand-navy border border-red-900/50 rounded-lg p-6 space-y-5 text-center">
           <div className="mx-auto w-12 h-12 rounded-xl bg-red-950/60 border border-red-800 text-red-400 flex items-center justify-center">
             <AlertCircle className="w-6 h-6" />
           </div>
@@ -113,8 +113,8 @@ const MainLayout: React.FC = () => {
               {isAr ? 'تعذر التحقق من حالة الإعداد' : 'Initialization & Onboarding Gate Notice'}
             </h2>
             <p className="text-xs text-slate-400">
-              {isAr 
-                ? 'لم يتمكن النظام من التحقق من حالة إعداد المنشأة في قاعدة البيانات. يرجى إعادة المحاولة.' 
+              {isAr
+                ? 'لم يتمكن النظام من التحقق من حالة إعداد المنشأة في قاعدة البيانات. يرجى إعادة المحاولة.'
                 : 'The platform could not verify the company onboarding status with the backend engine. Please retry.'}
             </p>
           </div>
@@ -125,7 +125,7 @@ const MainLayout: React.FC = () => {
 
           <button
             onClick={retryPlatformInit}
-            className="w-full py-2.5 px-4 rounded-xl bg-[#F28C28] hover:bg-[#d9771e] text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+            className="w-full py-2.5 px-4 rounded-md bg-brand-orange hover:bg-brand-orange-hover text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
             {isAr ? 'إعادة المحاولة الآن' : 'Retry Verification Now'}
@@ -198,18 +198,18 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200" dir={dir}>
-      
+
       {/* Top Bar */}
       <Navbar />
 
       {/* Main Container */}
       <div className="flex-1 flex overflow-hidden">
-        
+
         {/* Navigation Sidebar */}
         <Sidebar />
 
         {/* Scrollable Main Application Canvas */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-slate-50/80 dark:bg-slate-950">
           {renderActiveModule()}
         </main>
 

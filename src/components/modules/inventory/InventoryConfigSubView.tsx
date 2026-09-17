@@ -180,7 +180,7 @@ export const InventoryConfigSubView: React.FC<Props> = ({
         {/* SKU Auto Generation Rules */}
         <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-4">
           <h4 className="font-bold text-slate-900 dark:text-white text-sm border-b border-slate-200 dark:border-slate-800 pb-2">
-            {isAr ? 'قواعد التكويد والبادئة (SKU Prefix Engine)' : 'SKU Generator & Prefix Rules'}
+            {isAr ? 'قواعد التكويد والبادئة' : 'SKU numbering and prefix rules'}
           </h4>
 
           <div>

@@ -4,15 +4,15 @@
  */
 
 import React, { useState } from 'react';
-import { 
-  Building2, 
-  Search, 
-  Globe, 
-  Moon, 
-  Sun, 
-  Bell, 
-  ShieldCheck, 
-  UserCheck, 
+import {
+  Building2,
+  Search,
+  Globe,
+  Moon,
+  Sun,
+  Bell,
+  ShieldCheck,
+  UserCheck,
   Layers,
   Menu,
   X,
@@ -35,13 +35,13 @@ import { usePlatform, ModuleView } from '../../context/PlatformContext';
 import { LoginModal } from '../common/LoginModal';
 
 export const Navbar: React.FC = () => {
-  const { 
-    lang, 
-    setLang, 
-    theme, 
-    setTheme, 
-    tenants, 
-    activeTenant, 
+  const {
+    lang,
+    setLang,
+    theme,
+    setTheme,
+    tenants,
+    activeTenant,
     setActiveTenant,
     companies,
     activeCompany,
@@ -77,24 +77,24 @@ export const Navbar: React.FC = () => {
   };
 
   const mobileNavItems: { id: ModuleView; labelEn: string; labelAr: string; icon: any }[] = [
-    { id: 'dashboard', labelEn: 'Executive Overview & BI', labelAr: 'نظرة عامة والذكاء التشغيلي', icon: LayoutDashboard },
-    { id: 'core', labelEn: 'Core Platform & Governance', labelAr: 'إدارة المنصة والحوكمة', icon: Building },
-    { id: 'accounting', labelEn: 'Financial Accounting', labelAr: 'المحاسبة المالية والمالية العامة', icon: Calculator },
-    { id: 'inventory', labelEn: 'Inventory & Supply Chain', labelAr: 'المخزون وسلسلة الإمداد', icon: Package },
-    { id: 'sales', labelEn: 'Sales & Distribution', labelAr: 'المبيعات والتوزيع', icon: ShoppingBag },
-    { id: 'purchasing', labelEn: 'Purchasing & Procurement', labelAr: 'المشتريات والتوريد', icon: Truck },
-    { id: 'crm', labelEn: 'CRM & Lead Pipeline', labelAr: 'إدارة علاقات العملاء والفرص', icon: Users },
-    { id: 'hr', labelEn: 'HR & Payroll Engine', labelAr: 'الموارد البشرية والرواتب', icon: UserCheck },
-    { id: 'ai', labelEn: 'AI Copilot & Anomalies', labelAr: 'الذكاء الاصطناعي وكشف الخلل', icon: Bot },
+    { id: 'dashboard', labelEn: 'Business Overview', labelAr: 'نظرة عامة على الأعمال', icon: LayoutDashboard },
+    { id: 'core', labelEn: 'Platform & Governance', labelAr: 'المنصة والحوكمة', icon: Building },
+    { id: 'accounting', labelEn: 'Accounting', labelAr: 'المحاسبة', icon: Calculator },
+    { id: 'inventory', labelEn: 'Inventory & Supply', labelAr: 'المخزون والإمداد', icon: Package },
+    { id: 'sales', labelEn: 'Sales', labelAr: 'المبيعات', icon: ShoppingBag },
+    { id: 'purchasing', labelEn: 'Purchasing', labelAr: 'المشتريات', icon: Truck },
+    { id: 'crm', labelEn: 'Customers', labelAr: 'العملاء', icon: Users },
+    { id: 'hr', labelEn: 'People & Payroll', labelAr: 'الموارد والرواتب', icon: UserCheck },
+    { id: 'ai', labelEn: 'Smart Review', labelAr: 'المراجعة الذكية', icon: Bot },
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur shadow-xs transition-colors">
-      <div className="flex h-16 items-center justify-between px-4 sm:px-6">
-        
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors">
+      <div className="flex h-[4.25rem] items-center justify-between px-4 sm:px-6 lg:px-7">
+
         {/* Left: Mobile Menu Toggle & Brand Identity */}
         <div className="flex items-center gap-3">
-          
+
           {/* Mobile Hamburger Toggle */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -105,11 +105,11 @@ export const Navbar: React.FC = () => {
           </button>
 
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveModule('dashboard')}>
-            <div 
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-white font-black shadow-md border overflow-hidden shrink-0"
-              style={{ 
-                backgroundColor: branding?.primaryColor || '#0B1F3A',
-                borderColor: `${branding?.accentColor || '#C9A227'}66` 
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-md text-white font-black border overflow-hidden shrink-0"
+              style={{
+                backgroundColor: branding?.primaryColor || '#0B1D36',
+                borderColor: `${branding?.accentColor || '#CAAF7D'}66`
               }}
             >
               {(theme === 'dark' && branding?.darkLogoUrl) ? (
@@ -117,7 +117,7 @@ export const Navbar: React.FC = () => {
               ) : branding?.logoUrl ? (
                 <img src={branding.logoUrl} alt="Logo" className="max-h-8 max-w-8 object-contain" onError={(e) => { (e.target as any).style.display = 'none'; }} />
               ) : (
-                <span className="text-lg tracking-wider" style={{ color: branding?.accentColor || '#C9A227' }}>
+                <span className="text-lg tracking-wider" style={{ color: branding?.accentColor || '#CAAF7D' }}>
                   {branding?.shortName || 'AM'}
                 </span>
               )}
@@ -125,16 +125,16 @@ export const Navbar: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-900 dark:text-white text-base tracking-tight">
-                  {isAr 
+                  {isAr
                     ? (branding?.appNameAr || branding?.appName || 'نظام إيه إم لإدارة الأعمال')
                     : (branding?.appName || 'AM Business OS')}
                 </span>
-                <span 
+                <span
                   className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold border"
-                  style={{ 
-                    backgroundColor: `${branding?.accentColor || '#C9A227'}1A`,
-                    color: branding?.accentColor || '#C9A227',
-                    borderColor: `${branding?.accentColor || '#C9A227'}4D`
+                  style={{
+                    backgroundColor: `${branding?.accentColor || '#CAAF7D'}1A`,
+                    color: branding?.accentColor || '#CAAF7D',
+                    borderColor: `${branding?.accentColor || '#CAAF7D'}4D`
                   }}
                 >
                   {activeTenant?.edition || 'Enterprise'}
@@ -146,10 +146,10 @@ export const Navbar: React.FC = () => {
             </div>
           </div>
 
-          <div className="hidden lg:flex items-center gap-2 border-l border-r border-slate-200 dark:border-slate-800 px-4 py-1 mx-2">
+          <div className="hidden lg:flex items-center gap-2 border-l border-r border-slate-200 dark:border-slate-800 px-4 py-1 mx-3">
             {/* Tenant Selector */}
             <div className="flex items-center gap-2 text-xs">
-              <Layers className="w-4 h-4 text-[#C9A227]" />
+              <Layers className="w-4 h-4 text-[#CAAF7D]" />
               <select
                 value={activeTenant?.id || ''}
                 onChange={(e) => {
@@ -191,10 +191,10 @@ export const Navbar: React.FC = () => {
         <div className="hidden md:flex flex-1 max-w-md mx-6">
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="w-full flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-2 text-xs text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 transition cursor-pointer"
+            className="w-full flex items-center justify-between rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-2 text-xs text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 transition cursor-pointer"
           >
             <div className="flex items-center gap-2">
-              <Search className="w-4 h-4 text-[#C9A227]" />
+              <Search className="w-4 h-4 text-[#CAAF7D]" />
               <span>{isAr ? 'ابحث في الحسابات، الفواتير، والقيود... (Ctrl+K)' : 'Search accounts, invoices, entries... (Ctrl+K)'}</span>
             </div>
             <kbd className="hidden sm:inline-block rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400">
@@ -205,18 +205,18 @@ export const Navbar: React.FC = () => {
 
         {/* Right: Actions, Mobile Search, Lang, Theme, Role, Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
-          
+
           {/* Mobile Search Icon */}
           <button
             onClick={() => setIsSearchOpen(true)}
             className="md:hidden p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
             title="Search"
           >
-            <Search className="w-4 h-4 text-[#C9A227]" />
+            <Search className="w-4 h-4 text-[#CAAF7D]" />
           </button>
 
           {/* Role Persona Switcher */}
-          <div className="hidden xl:flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl px-2.5 py-1 text-xs border border-slate-200 dark:border-slate-700">
+          <div className="hidden xl:flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 rounded-md px-2.5 py-1 text-xs border border-slate-200 dark:border-slate-700">
             <span className="text-[10px] uppercase font-bold text-slate-400">{isAr ? 'الدور:' : 'Role:'}</span>
             <select
               value={activeRole}
@@ -237,7 +237,7 @@ export const Navbar: React.FC = () => {
             className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             title={isAr ? 'تغيير اللغة إلى الإنجليزية' : 'Switch to Arabic'}
           >
-            <Globe className="w-4 h-4 text-[#C9A227]" />
+            <Globe className="w-4 h-4 text-[#CAAF7D]" />
             <span className="hidden sm:inline">{lang === 'en' ? 'العربية 🇸🇦' : 'English 🇬🇧'}</span>
             <span className="sm:hidden">{lang === 'en' ? 'AR' : 'EN'}</span>
           </button>
@@ -271,13 +271,13 @@ export const Navbar: React.FC = () => {
               <div className="absolute right-0 ltr:right-0 rtl:left-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-3">
                   <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-[#C9A227]" />
+                    <Bell className="w-4 h-4 text-[#CAAF7D]" />
                     <span className="font-bold text-xs text-slate-900 dark:text-white">
                       {isAr ? 'مركز التنبيهات والأحداث' : 'Enterprise Notification Hub'}
                     </span>
                   </div>
                   {unreadNotificationsCount > 0 && (
-                    <button 
+                    <button
                       onClick={() => clearAllNotifications()}
                       className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                     >
@@ -288,7 +288,7 @@ export const Navbar: React.FC = () => {
 
                 <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
                   {notifications.map(n => (
-                    <div 
+                    <div
                       key={n.id}
                       onClick={() => {
                         markNotificationRead(n.id);
@@ -296,8 +296,8 @@ export const Navbar: React.FC = () => {
                         setNotifOpen(false);
                       }}
                       className={`p-3 rounded-xl border text-xs cursor-pointer transition space-y-1 ${
-                        n.read 
-                          ? 'bg-slate-50/50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800 text-slate-500' 
+                        n.read
+                          ? 'bg-slate-50/50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800 text-slate-500'
                           : 'bg-white dark:bg-slate-800 border-amber-500/30 font-semibold text-slate-900 dark:text-white shadow-xs'
                       }`}
                     >
@@ -331,7 +331,7 @@ export const Navbar: React.FC = () => {
             title={isAr ? 'تبديل المستخدم أو تسجيل الدخول المؤسسي' : 'Switch Account / Enterprise Login'}
             id="nav-user-profile-btn"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B1F3A] text-[#C9A227] font-bold text-xs border border-[#C9A227]/40">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B1D36] text-[#CAAF7D] font-bold text-xs border border-[#CAAF7D]/40">
               AM
             </div>
             <div className="text-left rtl:text-right text-xs">
@@ -352,7 +352,7 @@ export const Navbar: React.FC = () => {
       {/* MOBILE DRAWER NAVIGATION */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-4 animate-in slide-in-from-top duration-200">
-          
+
           {/* Tenant & Company Switchers for Mobile */}
           <div className="grid grid-cols-2 gap-2 text-xs pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="space-y-1">
@@ -407,12 +407,12 @@ export const Navbar: React.FC = () => {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition ${
-                      isActive 
-                        ? 'bg-[#0B1F3A] text-white shadow-md' 
+                      isActive
+                        ? 'bg-[#0B1D36] text-white shadow-md'
                         : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-[#C9A227]' : 'text-slate-500'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-[#CAAF7D]' : 'text-slate-500'}`} />
                     <span>{isAr ? item.labelAr : item.labelEn}</span>
                   </button>
                 );
@@ -424,12 +424,11 @@ export const Navbar: React.FC = () => {
       )}
 
       {/* Canonical AM ERP Login & Multi-Tenant Authentication Modal */}
-      <LoginModal 
-        isOpen={isLoginModalOpen} 
-        onClose={() => setIsLoginModalOpen(false)} 
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
       />
     </header>
   );
 };
-
 

@@ -215,7 +215,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
         {/* Modal Header */}
         <div className="px-6 py-5 bg-[#0B1F3A] text-white flex items-center justify-between border-b border-[#153258]">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-[#153258] border border-[#F28C28]/40 text-[#F28C28]">
+            <div className="p-2.5 rounded-2xl bg-[#153258] border border-brand-gold/40 text-brand-gold">
               <Building2 className="w-6 h-6" />
             </div>
             <div>
@@ -244,7 +244,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
             <div className="p-4 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/80 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200 flex items-start gap-3 animate-in fade-in slide-in-from-top-1">
               <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <div className="font-bold mb-0.5">{isAr ? 'محرك التهيئة التلقائي' : 'Smart Localization Auto-Engine'}</div>
+                <div className="font-bold mb-0.5">{isAr ? 'التهيئة المحلية الذكية' : 'Smart Localization'}</div>
                 <div>{suggestedMsg}</div>
               </div>
             </div>
@@ -302,12 +302,12 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
             </div>
           </div>
 
-          {/* Section 2: Country & Localization Engine */}
+          {/* Section 2: Country & Localization */}
           <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-700/80 pb-3">
               <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Globe className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                <span>{isAr ? 'إعدادات الدولة والتوطين الديناميكي' : 'Country Selection & Dynamic Localization Engine'}</span>
+                <span>{isAr ? 'إعدادات الدولة والتوطين الديناميكي' : 'Country Selection & Dynamic Localization'}</span>
               </h3>
               <span className="px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 text-[10px] font-mono font-bold">
                 Unlimited Countries Supported
@@ -511,9 +511,9 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
             <button
               type="submit"
               disabled={isSaving}
-              className="min-h-[44px] px-6 py-2.5 rounded-xl text-xs font-bold bg-[#0B1F3A] hover:bg-[#153258] text-white transition flex items-center gap-2 cursor-pointer shadow-md"
+              className="btn-am-primary min-h-[44px] px-6 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-sm"
             >
-              <CheckCircle2 className="w-4 h-4 text-[#F28C28]" />
+              <CheckCircle2 className="w-4 h-4 text-brand-gold" />
               <span>{isSaving ? (isAr ? 'جاري الحفظ...' : 'Saving...') : (company ? (isAr ? 'حفظ التعديلات' : 'Save Changes') : (isAr ? 'إنشاء الشركة' : 'Create Company'))}</span>
             </button>
           </div>

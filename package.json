@@ -9,7 +9,9 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
+    "smoke": "tsx scripts/smoke_test.ts",
     "test": "tsx scripts/verify_all_phases.ts && tsx scripts/verify_p0_06_vertical_runtime.ts && tsx scripts/verify_p0_07_onboarding_wizard.ts",
+    "test:p0-controls": "tsx scripts/verify_p0_route_controls.ts",
     "test:p006": "tsx scripts/verify_p0_06_vertical_runtime.ts",
     "test:p007": "tsx scripts/verify_p0_07_onboarding_wizard.ts"
   },

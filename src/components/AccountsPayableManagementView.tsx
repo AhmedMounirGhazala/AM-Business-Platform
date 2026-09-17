@@ -249,13 +249,13 @@ export const AccountsPayableManagementView: React.FC = () => {
   };
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen font-sans text-slate-800">
+    <div className="purchasing-payables p-4 sm:p-6 min-h-screen font-sans text-slate-800">
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 pb-4 border-b border-slate-200 gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-              Phase 2.4 Domain Active
+              Accounts payable workspace
             </span>
             <span className="text-xs text-slate-500 font-mono">IFRS / ZATCA Compliant</span>
           </div>
@@ -264,7 +264,7 @@ export const AccountsPayableManagementView: React.FC = () => {
             Accounts Payable & Financial Matching Domain
           </h1>
           <p className="text-sm text-slate-600 mt-1">
-            3-Way Matching Engine, GR/IR Reconciliation, AP Vouchers, Credit Memos, Payment Proposals & Vendor Ledger Analytics
+            Invoice matching, GR/IR reconciliation, AP vouchers, credit memos, payment proposals & vendor ledger analytics
           </p>
         </div>
 
@@ -274,7 +274,7 @@ export const AccountsPayableManagementView: React.FC = () => {
             className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 shadow-sm transition-all"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh Engine State
+            Refresh data
           </button>
           <button
             onClick={() => setShowNewInvoiceModal(true)}
@@ -379,7 +379,7 @@ export const AccountsPayableManagementView: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <FileText className="w-5 h-5 text-emerald-600" />
-              Supplier Invoices & Three-Way Matching Engine
+              Supplier invoices & three-way matching
             </h2>
             <span className="text-xs text-slate-500">Automated PO ➔ Goods Receipt ➔ Supplier Invoice Validation</span>
           </div>
@@ -717,7 +717,7 @@ export const AccountsPayableManagementView: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <Building className="w-5 h-5 text-indigo-600" />
-              Vendor Statement Engine
+              Vendor statements
             </h2>
 
             <div className="flex items-center gap-2">
@@ -861,7 +861,7 @@ export const AccountsPayableManagementView: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <Clock className="w-5 h-5 text-purple-600" />
-              Period-End Purchase Accruals Engine (Uninvoiced Goods)
+              Period-end purchase accruals (uninvoiced goods)
             </h2>
             <span className="text-xs text-slate-500">IFRS Goods Received / Invoice Pending Accrual Ledger</span>
           </div>

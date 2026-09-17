@@ -8,7 +8,7 @@
  * - Positioning: Financial Accountant | Business Analyst
  * - Motto: "كل قرار ناجح يبدأ برقم صحيح"
  * - Primary color: #0B1F3A
- * - Accent color: #F28C28
+ * - Accent color: AM Gold
  * - Typography: Plus Jakarta Sans / Cairo
  */
 
@@ -63,7 +63,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
       id="am-login-modal-overlay"
     >
       <div 
-        className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+        className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden"
         id="am-login-card"
         style={{ fontFamily: isAr ? 'Cairo, sans-serif' : "'Plus Jakarta Sans', sans-serif" }}
       >
@@ -73,13 +73,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           className="p-6 text-white text-center relative overflow-hidden"
           style={{ backgroundColor: '#0B1F3A' }}
         >
-          <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-10 bg-[#F28C28] pointer-events-none" />
+          <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-10 bg-[var(--brand-gold)] pointer-events-none" />
           <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full opacity-10 bg-white pointer-events-none" />
 
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-4 ltr:right-4 rtl:left-4 p-1.5 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            className="am-focus-ring absolute top-4 end-4 p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
             title="Close"
             id="login-close-btn"
           >
@@ -90,7 +90,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           <button
             type="button"
             onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-            className="absolute top-4 ltr:left-4 rtl:right-4 px-2.5 py-1 rounded-full text-xs font-bold bg-[#153258] text-[#F28C28] border border-[#F28C28]/30 hover:bg-[#1f477d] transition flex items-center gap-1 cursor-pointer"
+            className="am-focus-ring absolute top-4 start-4 px-2.5 py-1 rounded-md text-xs font-bold bg-[var(--brand-navy-light)] text-[var(--brand-gold)] border border-[var(--brand-gold)]/30 hover:bg-[var(--brand-navy)] transition flex items-center gap-1 cursor-pointer"
             id="login-lang-toggle"
           >
             <Globe className="w-3 h-3" />
@@ -100,10 +100,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           {/* Approved AM Monogram Asset */}
           <div className="flex justify-center mb-3 mt-2">
             <div 
-              className="w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl shadow-xl border-2"
+              className="w-16 h-16 rounded-xl flex items-center justify-center font-black text-2xl shadow-lg border-2"
               style={{ 
                 backgroundColor: '#0B1F3A', 
-                color: '#F28C28',
+                color: 'var(--brand-gold)',
                 borderColor: 'rgba(242, 140, 40, 0.6)'
               }}
               id="am-login-monogram"
@@ -116,7 +116,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           <h2 className="text-xl font-black tracking-tight text-white">
             {isAr ? platformIdentity.productNameAr : platformIdentity.productName}
           </h2>
-          <p className="text-xs font-semibold text-[#F28C28] mt-0.5">
+          <p className="text-xs font-semibold text-[var(--brand-gold-muted)] mt-0.5">
             {isAr ? platformIdentity.brandFamilyAr : platformIdentity.brandFamily}
           </p>
           <p className="text-[11px] text-slate-300 mt-1">
@@ -125,7 +125,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
           {/* Approved Motto Banner */}
           <div className="mt-3 pt-2.5 border-t border-white/10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#153258]/80 text-[#F28C28] text-xs font-bold border border-[#F28C28]/25 shadow-xs">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[var(--brand-navy-light)]/80 text-[var(--brand-gold)] text-xs font-bold border border-[var(--brand-gold)]/25 shadow-xs">
               <Sparkles className="w-3 h-3" />
               <span>{isAr ? platformIdentity.mottoAr : platformIdentity.motto}</span>
             </div>
@@ -148,11 +148,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               <span className="text-[10px] text-slate-400 font-normal">Multi-Tenant Isolation</span>
             </label>
             <div className="relative">
-              <Building className="w-4 h-4 text-slate-400 absolute ltr:left-3 rtl:right-3 top-3 pointer-events-none" />
+              <Building className="w-4 h-4 text-slate-400 absolute start-3 top-3 pointer-events-none" />
               <select
                 value={selectedTenantId}
                 onChange={(e) => setSelectedTenantId(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 ltr:pl-9 rtl:pr-9 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#F28C28]"
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 ps-9 pe-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 am-control focus:outline-none"
                 id="login-tenant-select"
               >
                 {tenants.map(t => (
@@ -168,13 +168,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               {isAr ? 'البريد الإلكتروني' : 'Enterprise Email'}
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute ltr:left-3 rtl:right-3 top-3 pointer-events-none" />
+              <Mail className="w-4 h-4 text-slate-400 absolute start-3 top-3 pointer-events-none" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 ltr:pl-9 rtl:pr-9 py-2.5 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-[#F28C28]"
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 ps-9 pe-3 py-2.5 text-xs text-slate-900 dark:text-white font-medium am-control focus:outline-none"
                 id="login-email-input"
               />
             </div>
@@ -184,18 +184,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
               <span>{isAr ? 'كلمة المرور' : 'Password / PIN'}</span>
-              <span className="text-[10px] text-[#F28C28] hover:underline cursor-pointer">
+              <span className="text-[10px] text-[var(--brand-gold-muted)] hover:underline cursor-pointer">
                 {isAr ? 'استعادة الرمز؟' : 'Forgot?'}
               </span>
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute ltr:left-3 rtl:right-3 top-3 pointer-events-none" />
+              <Lock className="w-4 h-4 text-slate-400 absolute start-3 top-3 pointer-events-none" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 ltr:pl-9 rtl:pr-9 py-2.5 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-[#F28C28]"
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 ps-9 pe-3 py-2.5 text-xs text-slate-900 dark:text-white font-medium am-control focus:outline-none"
                 id="login-password-input"
               />
             </div>
@@ -204,12 +204,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           {/* Action Button */}
           <button
             type="submit"
-            className="w-full py-3 px-4 rounded-xl text-xs font-bold text-white shadow-md transition flex items-center justify-center gap-2 cursor-pointer mt-2"
+            className="am-focus-ring w-full py-3 px-4 rounded-lg text-xs font-bold text-white shadow-md transition flex items-center justify-center gap-2 cursor-pointer mt-2"
             style={{ backgroundColor: '#0B1F3A' }}
             id="login-submit-btn"
           >
             <span>{isAr ? 'تسجيل الدخول للمنصة' : 'Authenticate & Enter AM ERP'}</span>
-            <ArrowRight className="w-4 h-4 text-[#F28C28] rtl:rotate-180" />
+            <ArrowRight className="w-4 h-4 text-[var(--brand-gold)] rtl:rotate-180" />
           </button>
 
           {/* Legal Footnote */}

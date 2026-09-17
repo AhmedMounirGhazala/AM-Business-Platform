@@ -1,5 +1,5 @@
 /**
- * AM Business Platform - Phase 2.1 Inventory Foundation
+ * AM Business Platform - Inventory workspace
  * Complete ERP Architecture: Item Master, Categories, Groups, Brands, Models,
  * Units of Measure & Conversions, Packaging Units, Barcode Engine, SKU Generator,
  * Multi-Warehouse, Zones, Bin Locations, Batch/Lot Tracking, Serial Numbers, Traceability,
@@ -150,7 +150,7 @@ export const InventoryView: React.FC = () => {
       if (itemsRes.length > 0 && !selectedSku) setSelectedSku(itemsRes[0].sku);
       if (whRes.length > 0 && !selectedWarehouseId) setSelectedWarehouseId(whRes[0].id);
     } catch (err) {
-      console.error('Failed loading Phase 2.1 inventory data:', err);
+      console.error('Failed loading inventory data:', err);
     }
   };
 
@@ -180,7 +180,7 @@ export const InventoryView: React.FC = () => {
   const totalStockValuation = items.reduce((acc, i) => acc + (i.stockQty * i.costPrice), 0);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="min-h-full bg-slate-50/70 p-4 sm:p-6 dark:bg-slate-950/40" dir={isAr ? 'rtl' : 'ltr'}>
       
       {/* Module Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -188,21 +188,21 @@ export const InventoryView: React.FC = () => {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Package className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-              <span>{isAr ? 'المخزون وسلسلة الإمداد والمستودعات - المرحلة 2.1' : 'Inventory & Warehouse Foundation - Phase 2.1'}</span>
+              <span>{isAr ? 'المخزون والمستودعات' : 'Inventory & Warehousing'}</span>
             </h1>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-              ERP Foundation
+              Operations
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {isAr ? 'كارت الأصناف، المستودعات، العلبة، التراكيب، التتبع بالدفعة والسيريال، ومحرك الكوانت' : 'Item Master, Categories, Brands, Models, Multi-Warehouse, Bin Locations, Batches, Serials, and Stock Quant Engine'}
+            {isAr ? 'الأصناف، المواقع، الدفعات، الأرقام التسلسلية، وحالة المخزون' : 'Item catalog, locations, batches, serials, and stock visibility'}
           </p>
         </div>
 
         {canEdit && (
           <button
             onClick={() => setIsMovementModalOpen(true)}
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-xs cursor-pointer"
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition shadow-sm shadow-indigo-900/15 cursor-pointer"
           >
             <PlusCircle className="w-4 h-4" />
             <span>{isAr ? 'تسجيل حركة مخزنية (GRN / Issue)' : 'Record Stock Movement'}</span>
@@ -257,7 +257,7 @@ export const InventoryView: React.FC = () => {
           }`}
         >
           <Database className="w-4 h-4" />
-          <span>{isAr ? 'محرك الكوانت (Stock Quants)' : 'Stock Quant Engine'}</span>
+          <span>{isAr ? 'أرصدة المخزون' : 'Stock Balances'}</span>
         </button>
 
         <button
@@ -276,12 +276,12 @@ export const InventoryView: React.FC = () => {
           onClick={() => setActiveTab('costing')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition cursor-pointer ${
             activeTab === 'costing' 
-              ? 'bg-amber-600 text-white shadow-xs' 
-              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50'
+              ? 'bg-indigo-600 text-white shadow-sm' 
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
         >
           <Layers className="w-4 h-4" />
-          <span>{isAr ? 'محرك التكلفة والتقييم (Cost Engine)' : 'Cost Engine & Valuation'}</span>
+          <span>{isAr ? 'التكلفة والتقييم' : 'Cost & Valuation'}</span>
         </button>
 
         <button
@@ -305,7 +305,7 @@ export const InventoryView: React.FC = () => {
           }`}
         >
           <ShieldCheck className="w-4 h-4 text-amber-400" />
-          <span>{isAr ? 'الإغلاق والرقابة المخزنية (Closing & Control)' : 'Closing & Control Engine'}</span>
+          <span>{isAr ? 'الإغلاق والرقابة' : 'Closing & Control'}</span>
         </button>
 
         <button

@@ -74,97 +74,92 @@ export const SalesView: React.FC = () => {
   return (
     <div>
       {/* Top Domain Switcher Bar */}
-      <div className="bg-slate-900 text-white px-6 py-3 border-b border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Sales & Revenue Domain:</span>
-          <div className="flex bg-slate-800 p-1 rounded-lg border border-slate-700 overflow-x-auto">
+      <div className="bg-brand-navy text-white px-6 py-3.5 border-b border-brand-navy-light flex items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-300 whitespace-nowrap">Sales</span>
+          <div className="flex bg-brand-navy-dark/60 p-1 rounded-xl border border-white/10 overflow-x-auto">
             <button
               onClick={() => setDomainMode('CASH_APPLICATION')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                 domainMode === 'CASH_APPLICATION'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-brand-gold text-slate-950 shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
               <DollarSign className="w-3.5 h-3.5" />
-              Cash Apps & Lockbox (Phase 3.2C-04)
+              Cash application
             </button>
             <button
               onClick={() => setDomainMode('CUSTOMER_BILLING')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                 domainMode === 'CUSTOMER_BILLING'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-brand-gold text-slate-950 shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
               <DollarSign className="w-3.5 h-3.5" />
-              Customer Billing & Revenue (Phase 3.2C-03)
+              Customer billing
             </button>
             <button
               onClick={() => setDomainMode('OUTBOUND_LOGISTICS')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                 domainMode === 'OUTBOUND_LOGISTICS'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-brand-gold text-slate-950 shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
               <Truck className="w-3.5 h-3.5" />
-              Outbound Logistics & Delivery (Phase 3.2C-02)
+              Delivery
             </button>
             <button
               onClick={() => setDomainMode('ADVANCED_O2C')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                 domainMode === 'ADVANCED_O2C'
-                  ? 'bg-purple-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-brand-gold text-slate-950 shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
               <ShoppingBag className="w-3.5 h-3.5" />
-              Advanced Order-to-Cash (Phase 3.2C-01)
+              Sales orders
             </button>
             <button
               onClick={() => setDomainMode('ENTERPRISE_SALES')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                 domainMode === 'ENTERPRISE_SALES'
-                  ? 'bg-slate-700 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-brand-gold text-slate-950 shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
               <ShoppingBag className="w-3.5 h-3.5" />
-              Enterprise Sales & Orders (Phase 3.1)
+              Sales workspace
             </button>
             <button
               onClick={() => setDomainMode('ACCOUNTS_RECEIVABLE')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                 domainMode === 'ACCOUNTS_RECEIVABLE'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-brand-gold text-slate-950 shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
               <Receipt className="w-3.5 h-3.5" />
-              Accounts Receivable & OTC (Phase 2.5)
+              Receivables
             </button>
             <button
               onClick={() => setDomainMode('SALES_DISTRIBUTION')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                 domainMode === 'SALES_DISTRIBUTION'
-                  ? 'bg-slate-700 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-brand-gold text-slate-950 shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
-              Sales Master (v1.0)
+              Customers and invoices
             </button>
           </div>
         </div>
 
-        <div className="text-xs text-slate-400 font-mono">
-          {domainMode === 'CASH_APPLICATION' ? 'Domain State: PHASE 3.2C-04 ACTIVE' :
-           domainMode === 'CUSTOMER_BILLING' ? 'Domain State: PHASE 3.2C-03 ACTIVE' :
-           domainMode === 'OUTBOUND_LOGISTICS' ? 'Domain State: PHASE 3.2C-02 ACTIVE' :
-           domainMode === 'ADVANCED_O2C' ? 'Domain State: PHASE 3.2C-01 ACTIVE' :
-           domainMode === 'ENTERPRISE_SALES' ? 'Domain State: PHASE 3.1 ACTIVE' :
-           domainMode === 'ACCOUNTS_RECEIVABLE' ? 'Domain State: PHASE 2.5 ACTIVE' : 'Domain State: CERTIFIED v1.0'}
+        <div className="text-[10px] text-slate-300/80 whitespace-nowrap hidden xl:block">
+          {isAr ? 'عمليات المبيعات والتحصيل' : 'Sales and receivables operations'}
         </div>
       </div>
 
@@ -182,12 +177,14 @@ export const SalesView: React.FC = () => {
       ) : domainMode === 'ACCOUNTS_RECEIVABLE' ? (
         <AccountsReceivableManagementView />
       ) : (
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-7">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
             <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-navy text-brand-orange shadow-sm">
+                  <ShoppingBag className="w-5 h-5" />
+                </span>
                 <span>{isAr ? 'إدارة المبيعات والتوزيع وفواتير العملاء' : 'Sales & Distribution Management'}</span>
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -197,7 +194,7 @@ export const SalesView: React.FC = () => {
 
             <button
               onClick={() => setIsInvoiceModalOpen(true)}
-              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer"
+              className="btn-am-accent flex items-center gap-1.5 text-xs px-3.5 py-2 rounded-lg shadow-sm cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
               <span>{isAr ? 'إصدار فاتورة مبيعات' : 'Issue Sales Invoice'}</span>
@@ -206,21 +203,21 @@ export const SalesView: React.FC = () => {
 
       {/* KPI row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+        <div className="card-am-surface rounded-xl p-4 shadow-sm">
           <div className="text-xs font-semibold text-slate-500">{isAr ? 'إجمالي المبيعات المفلترة' : 'Total Invoiced Sales'}</div>
           <div className="text-xl font-mono font-bold text-emerald-600 mt-1">
             {totalInvoicedValue.toLocaleString()} SAR
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+        <div className="card-am-surface rounded-xl p-4 shadow-sm">
           <div className="text-xs font-semibold text-slate-500">{isAr ? 'عدد العملاء النشطين' : 'Active Enterprise Customers'}</div>
           <div className="text-xl font-mono font-bold text-slate-900 dark:text-white mt-1">
             {customers.length} Accounts
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+        <div className="card-am-surface rounded-xl p-4 shadow-sm">
           <div className="text-xs font-semibold text-slate-500">{isAr ? 'معدل الالتزام الضريبي' : 'VAT Tax Rate'}</div>
           <div className="text-xl font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-1">
             15% KSA Standard
@@ -229,7 +226,7 @@ export const SalesView: React.FC = () => {
       </div>
 
       {/* Customers List */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+      <div className="card-am-surface rounded-xl p-5 shadow-sm space-y-4">
         <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
           <Users className="w-4 h-4 text-indigo-500" />
           <span>{isAr ? 'سجل العملاء المعتمدين (Customer 360)' : 'Master Customers Directory'}</span>
@@ -237,7 +234,7 @@ export const SalesView: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {customers.map((c) => (
-            <div key={c.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-xs space-y-1">
+            <div key={c.id} className="p-4 rounded-lg border border-slate-200/80 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 text-xs space-y-1">
               <div className="font-bold text-slate-900 dark:text-white text-sm flex items-center justify-between">
                 <span>{isAr ? c.nameAr : c.name}</span>
                 <span className="font-mono text-xs text-indigo-600">{c.code}</span>
@@ -254,7 +251,7 @@ export const SalesView: React.FC = () => {
       </div>
 
       {/* Sales Invoices List */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+      <div className="card-am-surface rounded-xl p-5 shadow-sm space-y-4">
         <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
           <FileText className="w-4 h-4 text-emerald-500" />
           <span>{isAr ? 'سجل فواتير المبيعات والضرائب' : 'Sales Invoices Ledger'}</span>
@@ -262,7 +259,7 @@ export const SalesView: React.FC = () => {
 
         <div className="space-y-3">
           {invoices.map((inv) => (
-            <div key={inv.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 text-xs space-y-2">
+            <div key={inv.id} className="p-4 rounded-lg border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/20 text-xs space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
                 <div className="flex items-center gap-2">
                   <span className="font-bold font-mono text-slate-900 dark:text-white text-sm">{inv.invoiceNumber}</span>
@@ -291,7 +288,7 @@ export const SalesView: React.FC = () => {
       {/* Create Invoice Modal */}
       {isInvoiceModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4">
+          <div className="card-am-surface w-full max-w-lg rounded-xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
               <h3 className="font-bold text-slate-900 dark:text-white text-base">Issue Sales Invoice</h3>
               <button onClick={() => setIsInvoiceModalOpen(false)} className="text-slate-400"><X className="w-5 h-5" /></button>
@@ -303,7 +300,7 @@ export const SalesView: React.FC = () => {
                 <select
                   value={selectedCustomerId}
                   onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2"
+                  className="w-full am-control bg-slate-50 dark:bg-slate-800 px-3 py-2"
                 >
                   {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
                 </select>
@@ -319,7 +316,7 @@ export const SalesView: React.FC = () => {
                     copy[0].itemName = e.target.value;
                     setLineItems(copy);
                   }}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2"
+                  className="w-full am-control bg-slate-50 dark:bg-slate-800 px-3 py-2"
                 />
               </div>
 
@@ -334,7 +331,7 @@ export const SalesView: React.FC = () => {
                       copy[0].quantity = Number(e.target.value);
                       setLineItems(copy);
                     }}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
+                    className="w-full am-control bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
                   />
                 </div>
 
@@ -348,7 +345,7 @@ export const SalesView: React.FC = () => {
                       copy[0].unitPrice = Number(e.target.value);
                       setLineItems(copy);
                     }}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
+                    className="w-full am-control bg-slate-50 dark:bg-slate-800 px-3 py-2 font-mono"
                   />
                 </div>
               </div>
@@ -363,7 +360,7 @@ export const SalesView: React.FC = () => {
               </button>
               <button
                 onClick={handleCreateInvoice}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer shadow-xs"
+                className="btn-am-accent px-4 py-2 rounded-lg text-xs cursor-pointer shadow-sm"
               >
                 Generate Invoice
               </button>
